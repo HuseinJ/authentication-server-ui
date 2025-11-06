@@ -35,6 +35,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Debug build arg
+        run: echo "Backend URL: ${{ github.event.inputs.BACKEND_API_URL }}"
+
       # 3. Build Docker image
       - name: Build Docker image
         run: |
