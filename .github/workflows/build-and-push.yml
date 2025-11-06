@@ -11,6 +11,10 @@ on:
         required: true
         default: 'http://localhost:8081'
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
