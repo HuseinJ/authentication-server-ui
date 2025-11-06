@@ -9,13 +9,11 @@ COPY package*.json ./
 
 ARG BACKEND_API_URL
 
-ENV VITE_BACKEND_API=$BACKEND_API_URL
-
 RUN npm ci
 
 COPY . .
 
-RUN npm run build
+RUN VITE_BACKEND_API=$BACKEND_API_URL npm run build
 
 RUN npm prune --production
 
