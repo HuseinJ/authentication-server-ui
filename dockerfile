@@ -7,13 +7,12 @@ WORKDIR /app
 
 COPY package*.json ./
 
-ARG BACKEND_API_URL
-
 RUN npm ci
 
 COPY . .
 
-RUN VITE_BACKEND_API=$BACKEND_API_URL npm run build
+ARG BACKEND_API_URL
+RUN echo "VITE_BACKEND_API=$BACKEND_API_URL" > .env && npm run build
 
 RUN npm prune --production
 
