@@ -1,8 +1,5 @@
 name: Build and Push Frontend
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       BACKEND_API_URL:
