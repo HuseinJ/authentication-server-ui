@@ -52,4 +52,9 @@
         {$isLoading ? 'Logging in...' : 'Login'}
       </button>
     </form>
+    <div class="text-center mt-4">
+      <a href="/start-reset" class="text-blue-600 hover:underline">
+        Forgot Password
+      </a>
+    </div>
   </div>
