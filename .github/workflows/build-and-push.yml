@@ -36,6 +36,7 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
+          --no-cache \
           --build-arg BACKEND_API_URL=${{ env.BACKEND_API_URL }} \
           -t $IMAGE_NAME:latest .
       
