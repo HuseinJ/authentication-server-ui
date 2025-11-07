@@ -6,7 +6,7 @@ import type { User } from '../auth/auth.types';
 
 const initialState: UsersState = {
   users: [],
-  isLoading: true,
+  isLoading: false,
   error: undefined
 };
 
@@ -76,7 +76,7 @@ function createUsersStore() {
 export const usersStore = createUsersStore();
 
 export const users = derived(usersStore, $store => $store.users);
-export const isLoadingUsers = derived(usersStore, $store => $store.isLoading);
+export const isLodingUsers = derived(usersStore, $store => $store.isLoading);
 export const usersError = derived(usersStore, $store => $store.error);
 export const userCount = derived(usersStore, $store => $store.users.length);
 
