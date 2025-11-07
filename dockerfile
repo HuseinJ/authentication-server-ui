@@ -12,7 +12,7 @@ RUN npm ci
 COPY . .
 
 ARG BACKEND_API_URL
-RUN echo "VITE_BACKEND_API=$BACKEND_API_URL" > .env && npm run build
+RUN echo "VITE_API_URL=$BACKEND_API_URL" > .env && npm run build
 
 RUN npm prune --production
 
@@ -25,7 +25,6 @@ WORKDIR /app
 
 COPY --from=builder /app/build build/
 COPY --from=builder /app/node_modules node_modules/
-COPY --from=builder /app/.env .env
 COPY package.json .
 
 EXPOSE 3000
