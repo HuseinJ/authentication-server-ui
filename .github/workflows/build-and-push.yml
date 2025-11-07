@@ -32,10 +32,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Clean up environment files
-        run: |
-          rm -f .env
-
       # 3. Build Docker image
       - name: Build Docker image
         run: |
