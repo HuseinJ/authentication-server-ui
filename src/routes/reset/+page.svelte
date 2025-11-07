@@ -2,7 +2,7 @@
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
     import { onMount } from 'svelte';
-    import { isLodingUsers } from '$lib/users/users.store';
+    import { isLoadingUsers } from '$lib/users/users.store';
     import { completePasswordReset } from '$lib/users/users.service';
     
     let token = '';
@@ -55,7 +55,7 @@
             placeholder="Enter new password"
             required 
             minlength="8"
-            disabled={$isLodingUsers || !token}
+            disabled={$isLoadingUsers || !token}
           />
           <p class="text-sm text-gray-600 mt-1">Must be at least 8 characters</p>
         </div>
@@ -70,7 +70,7 @@
             placeholder="Confirm new password"
             required 
             minlength="8"
-            disabled={$isLodingUsers || !token}
+            disabled={$isLoadingUsers || !token}
           />
           {#if !passwordsMatch}
             <p class="text-sm text-red-600 mt-1">Passwords do not match</p>
@@ -85,11 +85,11 @@
         
         <button 
           type="submit" 
-          disabled={$isLodingUsers || !token || !passwordsMatch}
+          disabled={$isLoadingUsers || !token || !passwordsMatch}
           class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 
                  disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {#if $isLodingUsers}
+          {#if $isLoadingUsers}
             Resetting Password...
           {:else}
             Reset Password

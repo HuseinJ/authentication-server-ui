@@ -1,6 +1,6 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
-    import { isLodingUsers } from '$lib/users/users.store';
+    import { isLoadingUsers } from '$lib/users/users.store';
     import { initiatePasswordReset } from '$lib/users/users.service';
     
     let username = '';
@@ -63,7 +63,7 @@
             class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Enter your username or email"
             required 
-            disabled={$isLodingUsers}
+            disabled={$isLoadingUsers}
           />
         </div>
         
@@ -75,11 +75,11 @@
         
         <button 
           type="submit" 
-          disabled={$isLodingUsers}
+          disabled={$isLoadingUsers}
           class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 
                  disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {#if $isLodingUsers}
+          {#if $isLoadingUsers}
             Sending...
           {:else}
             Send Reset Link
