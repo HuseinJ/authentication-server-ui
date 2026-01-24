@@ -92,13 +92,9 @@ export async function loadUsers(): Promise<User[]> {
 
         // Parse JSON response
         const data: BackendUser[] = await response.json();
-        
-        console.log("Raw backend users:", data);
 
         // Transform backend format to frontend format
         const users = data.map(transformUser);
-        
-        console.log("Transformed users:", users);
 
         // Update the store
         usersStore.setUsers(users);
@@ -131,8 +127,6 @@ export async function createUser(user: User): Promise<User> {
         })
 
         const data = response.body;
-
-        console.log(user, data)
     } catch (error) {
         const errorMessage = error instanceof UsersError
         ? error.message
