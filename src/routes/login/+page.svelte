@@ -8,7 +8,6 @@
     async function handleLogin() {
       try {
         await login({ username, password });
-        console.log("request finished");
         goto('/users');
       } catch (error) {
         console.error('Login failed');

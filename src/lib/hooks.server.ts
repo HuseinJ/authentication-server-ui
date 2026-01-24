@@ -17,9 +17,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     // For now, just mark as authenticated
     // const decoded = decodeJWT(accessToken);
     // event.locals.user = decoded;
-    
-    console.log('User authenticated with token');
-  }
+      }
 
   // Protected routes - redirect to login if not authenticated
   const protectedRoutes = ['/dashboard', '/profile', '/settings'];
@@ -28,7 +26,6 @@ export const handle: Handle = async ({ event, resolve }) => {
   );
 
   if (isProtectedRoute && !accessToken) {
-    console.log('Protected route accessed without token, redirecting to login');
     throw redirect(302, '/login');
   }
 
@@ -39,7 +36,6 @@ export const handle: Handle = async ({ event, resolve }) => {
   );
 
   if (isGuestRoute && accessToken) {
-    console.log('Guest route accessed with token, redirecting to dashboard');
     throw redirect(302, '/dashboard');
   }
 

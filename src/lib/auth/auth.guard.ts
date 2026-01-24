@@ -21,10 +21,7 @@ export function requireAuth(event: RequestEvent, redirectTo: string = '/login') 
     token = event.cookies.get('accessToken');
   }
 
-  console.log('requireAuth - Token found:', !!token); // Debug log
-
   if (!token) {
-    console.log('requireAuth - No token, redirecting to:', redirectTo); // Debug log
     throw redirect(302, redirectTo);
   }
 

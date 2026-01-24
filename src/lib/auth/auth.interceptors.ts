@@ -29,11 +29,6 @@ export async function authenticatedFetch(
     headers.set('Authorization', `Bearer ${tokens.token}`);
   }
 
-  console.log("Headers:");
-  headers.forEach((value, key) => {
-    console.log(`${key}: ${value}`);
-  });
-
   // Use the passed fetchFn instead of global fetch
   let response = await fetchFn(url, {
     ...fetchConfig,
