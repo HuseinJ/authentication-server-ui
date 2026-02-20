@@ -1,18 +1,27 @@
 <script lang="ts">
-    import { login, authError, isLoading } from '$lib/auth';
+    import { login, oidcLogin, authError, isLoading } from '$lib/auth';
     import { goto } from '$app/navigation';
+    import { page } from '$app/stores';
+
   
     let username = '';
     let password = '';
+
+    const isOidcFlow = $page.url.searchParams.get('flow') === 'oidc';
   
     async function handleLogin() {
-      try {
+    try {
+      if (isOidcFlow) {
+        await oidcLogin({ username, password });
+        // no goto needed — Spring redirects the browser automatically
+      } else {
         await login({ username, password });
         goto('/users');
-      } catch (error) {
-        console.error('Login failed');
       }
+    } catch (error) {
+      console.error('Login failed');
     }
+  }
   </script>
 
 <div class="container mx-auto max-w-md p-6">

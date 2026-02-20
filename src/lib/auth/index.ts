@@ -27,6 +27,7 @@ export type {
   // Service functions
   export {
     login,
+    oidcLogin,
     register,
     logout,
     refreshToken,
