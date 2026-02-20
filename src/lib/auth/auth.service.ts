@@ -13,6 +13,8 @@ import { AuthError } from './auth.types';
 
 // Configuration - you'll replace these with your actual Spring backend URLs
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const OIDC_LOGIN_URL = import.meta.env.VITE_API_URL + '/oauth2/login';
+
 
 const ENDPOINTS = {
   LOGIN: `${API_BASE_URL}/api/auth/login`,
@@ -133,6 +135,32 @@ function saveTokensToCookies(tokens: TokenData): void {
       throw error;
     }
   }
+
+  /**
+ * Login via OIDC flow — credentials go to the auth server, 
+ * which then redirects to the original redirect_uri with the auth code
+ */
+  export async function oidcLogin(credentials: LoginRequest): Promise<void> {
+    // Create a hidden form and submit it — the browser handles the redirect natively
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = OIDC_LOGIN_URL;
+
+    const usernameField = document.createElement('input');
+    usernameField.type = 'hidden';
+    usernameField.name = 'username';
+    usernameField.value = credentials.username;
+
+    const passwordField = document.createElement('input');
+    passwordField.type = 'hidden';
+    passwordField.name = 'password';
+    passwordField.value = credentials.password;
+
+    form.appendChild(usernameField);
+    form.appendChild(passwordField);
+    document.body.appendChild(form);
+    form.submit(); // browser follows the 302 naturally, including cookies
+}
   
   /**
    * Register new user
