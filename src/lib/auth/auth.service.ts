@@ -125,6 +125,8 @@ function saveTokensToCookies(tokens: TokenData): void {
       
       // ALSO save to cookies for server-side access
       saveTokensToCookies(tokenData);
+
+      await getCurrentUser()
   
       return data.token;
     } catch (error) {
