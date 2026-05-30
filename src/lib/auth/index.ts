@@ -1,56 +1,35 @@
-// src/lib/auth/index.ts
-// Public API - Export everything that should be accessible from outside
+// Public auth API
 
-// Types
 export type {
-    User,
-    LoginRequest,
-    RegisterRequest,
-    AuthResponse,
-    RefreshTokenResponse,
-    AuthState,
-    TokenData,
-    ApiError
-  } from './auth.types';
-  
-  export { AuthError } from './auth.types';
-  
-  // Store
-  export {
-    authStore,
-    user,
-    isAuthenticated,
-    isLoading,
-    authError
-  } from './auth.store';
-  
-  // Service functions
-  export {
-    login,
-    oidcLogin,
-    register,
-    logout,
-    refreshToken,
-    getCurrentUser,
-    initializeAuth,
-    hasRole,
-    hasAnyRole
-  } from './auth.service';
-  
-  // Interceptor
-  export {
-    authenticatedFetch,
-    createAuthInterceptor,
-    requestQueue
-  } from './auth.interceptors';
-  
-  // Guards
-  export {
-    requireAuth,
-    requireGuest,
-    requireRole,
-    requireAnyRole,
-    requireAllRoles,
-    optionalAuth,
-    clientRequireAuth
-  } from './auth.guard';
+  User,
+  LoginRequest,
+  AuthResponse,
+  AuthState,
+  TokenData
+} from './auth.types';
+
+export { AuthError } from './auth.types';
+
+export {
+  authStore,
+  user,
+  isAuthenticated,
+  isLoading,
+  authError,
+  transformUser
+} from './auth.store';
+
+export {
+  BASE_URL,
+  login,
+  oidcLogin,
+  logout,
+  getCurrentUser,
+  initializeAuth,
+  hasRole,
+  hasAnyRole
+} from './auth.service';
+
+export { authenticatedFetch, createAuthInterceptor } from './auth.interceptors';
+
+export { requireAuth, requireGuest, optionalAuth } from './auth.guard';

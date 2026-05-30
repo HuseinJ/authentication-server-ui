@@ -1,4 +1,4 @@
-import { authenticatedFetch } from '$lib/auth';
+import { authenticatedFetch, BASE_URL } from '$lib/auth';
 import { oidcClientsStore } from './oidc-clients.store';
 import {
   OidcClientsError,
@@ -10,15 +10,14 @@ import {
   type RegenerateSecretResponse
 } from './oidc-clients.types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
-
 const ENDPOINTS = {
-  LIST: `${API_BASE_URL}/api/oidc/clients`,
-  GET: (id: string) => `${API_BASE_URL}/api/oidc/clients/${id}`,
-  CREATE: `${API_BASE_URL}/api/oidc/clients`,
-  UPDATE: (id: string) => `${API_BASE_URL}/api/oidc/clients/${id}`,
-  DELETE: (id: string) => `${API_BASE_URL}/api/oidc/clients/${id}`,
-  REGENERATE_SECRET: (id: string) => `${API_BASE_URL}/api/oidc/clients/${id}/regenerate-secret`
+  LIST: `${BASE_URL}/api/oidc/clients`,
+  GET: (id: string) => `${BASE_URL}/api/oidc/clients/${encodeURIComponent(id)}`,
+  CREATE: `${BASE_URL}/api/oidc/clients`,
+  UPDATE: (id: string) => `${BASE_URL}/api/oidc/clients/${encodeURIComponent(id)}`,
+  DELETE: (id: string) => `${BASE_URL}/api/oidc/clients/${encodeURIComponent(id)}`,
+  REGENERATE_SECRET: (id: string) =>
+    `${BASE_URL}/api/oidc/clients/${encodeURIComponent(id)}/regenerate-secret`
 };
 
 function transformClient(backendClient: BackendOidcClient): OidcClient {

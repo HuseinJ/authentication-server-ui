@@ -1,32 +1,29 @@
-import type {User} from '../auth/auth.types'
+import type { User } from '../auth/auth.types';
 
 export interface UsersState {
-    users: User[]
-    isLoading: boolean
-    error?: string
+  users: User[];
+  isLoading: boolean;
+  error?: string;
 }
 
 export class UsersError extends Error {
-    constructor(
-      message: string,
-      public status: number,
-      public errors?: Record<string, string[]>
-    ) {
-      super(message);
-      this.name = 'UsersError';
-    }
+  constructor(
+    message: string,
+    public status: number,
+    public details?: Record<string, string[]>
+  ) {
+    super(message);
+    this.name = 'UsersError';
+  }
 }
 
-// Backend user response type
 export interface BackendUser {
   username: { value: string };
   email: { value: string };
   roles: Array<{ name: string }>;
-  userType: string;
-  user_TYPE: string;
+  userType?: string;
 }
 
-// Request types
 export interface CreateUserRequest {
   username: string;
   email: string;
@@ -51,3 +48,6 @@ export interface CompleteResetPasswordRequest {
   token: string;
   newPassword: string;
 }
+
+export const AVAILABLE_ROLES = ['ROLE_ADMIN', 'ROLE_GUEST'] as const;
+export type Role = (typeof AVAILABLE_ROLES)[number];

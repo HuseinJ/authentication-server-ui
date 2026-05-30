@@ -1,10 +1,4 @@
-import { loadUsers } from '$lib/users/users.service';
-import type { PageLoad } from './$types';
-
-export const load: PageLoad = async () => {
-  const users = await loadUsers();
-
-  return {
-    users
-  };
-};
+// Client-side data loading happens in +page.svelte (onMount) because the
+// auth token lives in localStorage; hooks.server.ts already redirects
+// unauthenticated visitors via the accessToken cookie.
+export const load = () => ({});

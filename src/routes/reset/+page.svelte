@@ -1,106 +1,117 @@
 <script lang="ts">
-    import { goto } from '$app/navigation';
-    import { page } from '$app/stores';
-    import { onMount } from 'svelte';
-    import { isLoadingUsers } from '$lib/users/users.store';
-    import { completePasswordReset } from '$lib/users/users.service';
-    
-    let token = '';
-    let username = ''
-    let newPassword = '';
-    let confirmPassword = '';
-    let error = '';
-    let success = false;
-    let passwordsMatch = true;
-  
-    onMount(() => {
-      // Get token from URL parameter
-      token = $page.url.searchParams.get('token') || '';
-      username = $page.url.searchParams.get('username') || '';
-      
-      if (!token || !username) {
-        error = 'Invalid or missing reset token or username ';
-      }
-    });
-    // Check if passwords match
-    $: passwordsMatch = newPassword === confirmPassword || confirmPassword === '';
-    async function handleResetComplete() {
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { completePasswordReset } from '$lib/users/users.service';
+  import { notifications } from '$lib/notifications/notifications.store';
 
-        try {
-        await completePasswordReset(username, token, newPassword)
-        goto('/login');
-      } catch (error) {
-        console.error('Login failed');
-        error = 'Something went wrong';
-      }
+  let newPassword = $state('');
+  let confirmPassword = $state('');
+  let submitting = $state(false);
+
+  const token = $derived($page.url.searchParams.get('token') ?? '');
+  const usernameParam = $derived($page.url.searchParams.get('username') ?? '');
+  const passwordsMatch = $derived(
+    newPassword.length === 0 || confirmPassword.length === 0 || newPassword === confirmPassword
+  );
+  const linkValid = $derived(!!token && !!usernameParam);
+
+  async function handleSubmit(e: SubmitEvent) {
+    e.preventDefault();
+    if (!linkValid) {
+      notifications.error('Reset link is missing the token or username.', 'Invalid link');
+      return;
     }
-  </script>
-  
-  <div class="container mx-auto max-w-md p-6">
-    <h1 class="text-3xl font-bold mb-6">Reset Your Password</h1>
-    
-    {#if success}
-      <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-        <p class="font-bold">Success!</p>
-        <p>Your password has been reset. Redirecting to login...</p>
-      </div>
-    {:else}
-      <form on:submit|preventDefault={handleResetComplete} class="space-y-4">
-        <div>
-          <label class="block mb-2 font-medium">New Password</label>
-          <input 
-            type="password" 
-            bind:value={newPassword} 
-            class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter new password"
-            required 
-            minlength="8"
-            disabled={$isLoadingUsers || !token}
-          />
-          <p class="text-sm text-gray-600 mt-1">Must be at least 8 characters</p>
+    if (newPassword.length < 8) {
+      notifications.warning('Password must be at least 8 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      notifications.warning('Passwords do not match.');
+      return;
+    }
+
+    submitting = true;
+    try {
+      await completePasswordReset(usernameParam, token, newPassword);
+      notifications.success('Password reset successfully. You can now sign in.');
+      goto('/login');
+    } catch {
+      notifications.error(
+        'This reset link is invalid or has expired. Request a new one.',
+        'Reset failed'
+      );
+    } finally {
+      submitting = false;
+    }
+  }
+</script>
+
+<div class="container mx-auto px-6 py-12 sm:py-20">
+  <div class="max-w-md mx-auto">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl sm:text-4xl font-bold mb-2">
+        Choose a <span class="gradient-text">new password</span>
+      </h1>
+      <p class="text-gray-600">Use at least 8 characters.</p>
+    </div>
+
+    <div class="card p-6 sm:p-8">
+      {#if !linkValid}
+        <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 mb-5">
+          This reset link is missing required information. Please request a new one.
         </div>
-        
-        <div>
-          <label class="block mb-2 font-medium">Confirm Password</label>
-          <input 
-            type="password" 
-            bind:value={confirmPassword} 
-            class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500
-                   {!passwordsMatch ? 'border-red-500' : ''}"
-            placeholder="Confirm new password"
-            required 
-            minlength="8"
-            disabled={$isLoadingUsers || !token}
-          />
-          {#if !passwordsMatch}
-            <p class="text-sm text-red-600 mt-1">Passwords do not match</p>
-          {/if}
-        </div>
-        
-        {#if error}
-          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            {error}
+        <a href="/start-reset" class="btn-primary w-full">Request a new link</a>
+      {:else}
+        <form onsubmit={handleSubmit} class="space-y-5">
+          <div>
+            <label for="newPassword" class="label">New password</label>
+            <input
+              id="newPassword"
+              type="password"
+              autocomplete="new-password"
+              bind:value={newPassword}
+              class="field"
+              placeholder="••••••••"
+              minlength="8"
+              required
+              disabled={submitting}
+            />
+            <p class="text-xs text-gray-500 mt-1">Minimum 8 characters.</p>
           </div>
-        {/if}
-        
-        <button 
-          type="submit" 
-          disabled={$isLoadingUsers || !token || !passwordsMatch}
-          class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 
-                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {#if $isLoadingUsers}
-            Resetting Password...
-          {:else}
-            Reset Password
-          {/if}
-        </button>
-  
-        <div class="text-center mt-4">
-          <a href="/login" class="text-blue-600 hover:underline">
-            Back to Login
-          </a>
-        </div>
-      </form>
-    {/if}
+
+          <div>
+            <label for="confirmPassword" class="label">Confirm new password</label>
+            <input
+              id="confirmPassword"
+              type="password"
+              autocomplete="new-password"
+              bind:value={confirmPassword}
+              class="field {!passwordsMatch ? 'field-invalid' : ''}"
+              placeholder="••••••••"
+              minlength="8"
+              required
+              disabled={submitting}
+            />
+            {#if !passwordsMatch}
+              <p class="text-xs text-red-600 mt-1">Passwords do not match.</p>
+            {/if}
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting || !passwordsMatch}
+            class="btn-primary w-full"
+          >
+            {submitting ? 'Resetting…' : 'Reset password'}
+          </button>
+
+          <div class="text-center text-sm">
+            <a href="/login" class="text-primary-600 hover:text-primary-700 font-medium"
+              >Back to login</a
+            >
+          </div>
+        </form>
+      {/if}
+    </div>
   </div>
+</div>

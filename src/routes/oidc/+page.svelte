@@ -1,6 +1,5 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { logout } from '$lib/auth';
   import {
     deleteOidcClient,
     updateOidcClient,
@@ -8,25 +7,31 @@
     loadOidcClients,
     type RegenerateSecretResult
   } from '$lib/oidc/oidc-clients.service';
-  import { oidcClients, isLoadingOidcClients, oidcClientsError } from '$lib/oidc/oidc-clients.store';
+  import { oidcClients, isLoadingOidcClients } from '$lib/oidc/oidc-clients.store';
   import {
-    defaultTokenSettings,
+    AVAILABLE_GRANT_TYPES,
+    AVAILABLE_SCOPES,
     defaultClientSettings,
+    defaultTokenSettings,
     type OidcClient,
     type UpdateOidcClientRequest
   } from '$lib/oidc/oidc-clients.types';
+  import { notifications } from '$lib/notifications/notifications.store';
   import { onMount } from 'svelte';
   import PageHeader from '$lib/components/PageHeader.svelte';
   import Badge from '$lib/components/Badge.svelte';
   import ConfirmInline from '$lib/components/ConfirmInline.svelte';
+  import Modal from '$lib/components/Modal.svelte';
 
-  onMount(() => loadOidcClients());
+  onMount(() => {
+    loadOidcClients().catch(() => {
+      notifications.error('Could not load OIDC clients.', 'Load failed');
+    });
+  });
 
-  // Delete state
   let deletingClient = $state<string | null>(null);
   let showDeleteConfirm = $state<string | null>(null);
 
-  // Edit modal state
   let showEditModal = $state(false);
   let editingClient = $state<OidcClient | null>(null);
   let editForm = $state<UpdateOidcClientRequest>({
@@ -41,39 +46,37 @@
   let editErrors = $state<Record<string, string>>({});
   let isUpdating = $state(false);
 
-  // Regenerate state
   let showRegenerateConfirm = $state<string | null>(null);
   let isRegenerating = $state(false);
   let regeneratedSecret = $state<{ clientId: string; secret: string } | null>(null);
 
-  const availableGrantTypes = ['authorization_code', 'refresh_token', 'client_credentials', 'device_code'];
-  const availableScopes = ['openid', 'profile', 'email', 'address', 'phone'];
-
   function toggleItem(arr: string[], item: string) {
-    return arr.includes(item) ? arr.filter(i => i !== item) : [...arr, item];
+    return arr.includes(item) ? arr.filter((i) => i !== item) : [...arr, item];
   }
 
-  // Delete
-  async function handleDeleteClient(id: string) {
+  async function handleDeleteClient(id: string, name: string) {
     try {
       deletingClient = id;
       await deleteOidcClient(id);
       showDeleteConfirm = null;
+      notifications.success(`Client "${name}" deleted.`);
     } catch (err) {
-      console.error('Failed to delete client:', err);
+      const message = err instanceof Error ? err.message : 'Failed to delete client.';
+      notifications.error(message, 'Delete failed');
     } finally {
       deletingClient = null;
     }
   }
 
-  // Edit
   function openEditModal(client: OidcClient) {
     editingClient = client;
     editForm = {
       clientName: client.clientName,
       grantTypes: [...client.grantTypes],
-      redirectUris: [...client.redirectUris],
-      postLogoutRedirectUris: [...client.postLogoutRedirectUris],
+      redirectUris: client.redirectUris.length ? [...client.redirectUris] : [''],
+      postLogoutRedirectUris: client.postLogoutRedirectUris.length
+        ? [...client.postLogoutRedirectUris]
+        : [''],
       scopes: [...client.scopes],
       tokenSettings: { ...client.tokenSettings },
       clientSettings: { ...client.clientSettings }
@@ -85,33 +88,35 @@
   function validateEditForm(): boolean {
     const errors: Record<string, string> = {};
     if (!editForm.clientName.trim()) errors.clientName = 'Client name is required';
-    if (editForm.grantTypes.length === 0) errors.grantTypes = 'At least one grant type is required';
-    if (editForm.redirectUris.filter(u => u.trim()).length === 0) errors.redirectUris = 'At least one redirect URI is required';
-    if (editForm.scopes.length === 0) errors.scopes = 'At least one scope is required';
+    if (editForm.grantTypes.length === 0) errors.grantTypes = 'Pick at least one grant type';
+    if (editForm.redirectUris.filter((u) => u.trim()).length === 0)
+      errors.redirectUris = 'At least one redirect URI is required';
+    if (editForm.scopes.length === 0) errors.scopes = 'Pick at least one scope';
     editErrors = errors;
     return Object.keys(errors).length === 0;
   }
 
-  async function handleUpdateClient() {
+  async function handleUpdateClient(e: SubmitEvent) {
+    e.preventDefault();
     if (!editingClient || !validateEditForm()) return;
     try {
       isUpdating = true;
       await updateOidcClient(editingClient.id, {
         ...editForm,
-        redirectUris: editForm.redirectUris.filter(u => u.trim()),
-        postLogoutRedirectUris: editForm.postLogoutRedirectUris.filter(u => u.trim())
+        redirectUris: editForm.redirectUris.filter((u) => u.trim()),
+        postLogoutRedirectUris: editForm.postLogoutRedirectUris.filter((u) => u.trim())
       });
+      notifications.success(`Client "${editForm.clientName}" updated.`);
       showEditModal = false;
       editingClient = null;
     } catch (err) {
-      console.error('Failed to update client:', err);
-      editErrors.general = 'Failed to update client. Please try again.';
+      const message = err instanceof Error ? err.message : 'Update failed.';
+      editErrors = { ...editErrors, general: message };
     } finally {
       isUpdating = false;
     }
   }
 
-  // Regenerate
   async function handleRegenerateSecret(id: string) {
     try {
       isRegenerating = true;
@@ -119,115 +124,104 @@
       regeneratedSecret = { clientId: result.client.clientId, secret: result.clientSecret };
       showRegenerateConfirm = null;
     } catch (err) {
-      console.error('Failed to regenerate secret:', err);
+      const message = err instanceof Error ? err.message : 'Failed to regenerate secret.';
+      notifications.error(message, 'Regenerate failed');
     } finally {
       isRegenerating = false;
     }
   }
 </script>
 
-<div class="container mx-auto p-6">
-  <PageHeader title="OIDC Clients">
+<div class="container mx-auto px-6 py-10">
+  <PageHeader title="OIDC Clients" subtitle="Register applications that authenticate via this server.">
+    <button onclick={() => goto('/oidc/create')} class="btn-primary">+ New client</button>
   </PageHeader>
 
-  {#if $oidcClientsError}
-    <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{$oidcClientsError}</div>
-  {/if}
-
-  <div class="bg-white p-6 rounded shadow">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-2xl font-bold">Clients ({$oidcClients.length})</h2>
-      <button
-        onclick={() => goto('/oidc/create')}
-        class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-semibold"
-      >
-        + Create Client
-      </button>
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-xl font-bold text-gray-900">All clients ({$oidcClients.length})</h2>
     </div>
 
-    {#if $isLoadingOidcClients}
-      <p class="text-gray-600">Loading clients...</p>
+    {#if $isLoadingOidcClients && $oidcClients.length === 0}
+      <div class="py-12 text-center text-gray-500 text-sm">Loading clients…</div>
     {:else if $oidcClients.length === 0}
-      <p class="text-gray-600">No OIDC clients found.</p>
+      <div class="py-12 text-center text-gray-500 text-sm">No OIDC clients yet.</div>
     {:else}
-      <div class="space-y-4">
+      <div class="space-y-3">
         {#each $oidcClients as client}
-          <div class="border border-gray-200 rounded p-4 hover:bg-gray-50 transition-colors">
-            <div class="flex justify-between items-start">
-              <div class="flex-1">
-                <h3 class="font-semibold text-lg">{client.clientName}</h3>
-                <p class="text-gray-600 text-sm font-mono">{client.clientId}</p>
+          <div class="border border-gray-100 rounded-xl p-4 hover:bg-gray-50/70 transition-colors">
+            <div class="flex justify-between items-start gap-4 flex-wrap">
+              <div class="flex-1 min-w-0">
+                <h3 class="font-semibold text-gray-900">{client.clientName}</h3>
+                <p class="text-gray-600 text-sm font-mono truncate">{client.clientId}</p>
 
-                <div class="mt-2 flex gap-1 flex-wrap">
+                <div class="mt-2 flex gap-1.5 flex-wrap">
                   {#each client.grantTypes as gt}
                     <Badge text={gt} color="blue" />
                   {/each}
                 </div>
-                <div class="mt-1 flex gap-1 flex-wrap">
+                <div class="mt-1 flex gap-1.5 flex-wrap">
                   {#each client.scopes as scope}
                     <Badge text={scope} color="purple" />
                   {/each}
+                  {#if client.clientSettings.requireProofKey}
+                    <Badge text="PKCE" color="green" />
+                  {/if}
                 </div>
-                <div class="mt-2 text-sm text-gray-500">
-                  <span class="font-medium">Redirect URIs:</span>
-                  {#each client.redirectUris as uri}
-                    <span class="ml-1 font-mono text-xs">{uri}</span>
-                  {/each}
-                </div>
+                {#if client.redirectUris.length}
+                  <p class="mt-2 text-xs text-gray-500">
+                    <span class="font-medium">Redirect URIs:</span>
+                    <span class="font-mono ml-1">{client.redirectUris.join(', ')}</span>
+                  </p>
+                {/if}
               </div>
 
-              <!-- Actions — same pattern as users page -->
-              <div class="flex gap-2 flex-wrap items-center">
-                <button
-                  onclick={() => openEditModal(client)}
-                  class="ml-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
-                >
+              <div class="flex gap-2 items-center">
+                <button onclick={() => openEditModal(client)} class="btn-secondary text-sm py-1.5 px-3">
                   Edit
                 </button>
                 <button
-                  onclick={() => showRegenerateConfirm = client.id}
-                  class="px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600 transition-colors"
+                  onclick={() => (showRegenerateConfirm = client.id)}
+                  class="text-sm py-1.5 px-3 rounded-lg bg-yellow-100 text-yellow-800 hover:bg-yellow-200 font-semibold transition-colors"
                 >
-                  Regen Secret
+                  Regenerate secret
                 </button>
                 <button
-                  onclick={() => showDeleteConfirm = client.id}
+                  onclick={() => (showDeleteConfirm = client.id)}
                   disabled={deletingClient === client.id}
-                  class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  class="btn-danger text-sm py-1.5 px-3"
                 >
-                  {deletingClient === client.id ? 'Deleting...' : 'Delete'}
+                  {deletingClient === client.id ? 'Deleting…' : 'Delete'}
                 </button>
               </div>
             </div>
 
-            <!-- Delete confirmation — same component as users page -->
             {#if showDeleteConfirm === client.id}
               <ConfirmInline
-                message={`Are you sure you want to delete "${client.clientName}"?`}
-                confirmLabel="Yes, Delete"
+                message={`Delete "${client.clientName}"? Applications using it will stop working.`}
+                confirmLabel="Yes, delete"
                 isLoading={deletingClient === client.id}
-                onconfirm={() => handleDeleteClient(client.id)}
-                oncancel={() => showDeleteConfirm = null}
+                onconfirm={() => handleDeleteClient(client.id, client.clientName)}
+                oncancel={() => (showDeleteConfirm = null)}
               />
             {/if}
 
-            <!-- Regenerate confirmation -->
             {#if showRegenerateConfirm === client.id}
-              <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
-                <p class="text-yellow-800 font-semibold mb-3">
-                  Regenerate secret for "{client.clientName}"? The old secret will stop working immediately.
+              <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <p class="text-yellow-800 font-medium mb-3">
+                  Regenerate secret for "{client.clientName}"? The old secret stops working immediately.
                 </p>
-                <div class="flex gap-3">
+                <div class="flex gap-2 flex-wrap">
                   <button
                     onclick={() => handleRegenerateSecret(client.id)}
                     disabled={isRegenerating}
-                    class="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 font-semibold disabled:opacity-50"
+                    class="px-4 py-2 rounded-lg bg-yellow-600 text-white font-semibold hover:bg-yellow-700 disabled:opacity-50 text-sm transition-colors"
                   >
-                    {isRegenerating ? 'Regenerating...' : 'Yes, Regenerate'}
+                    {isRegenerating ? 'Regenerating…' : 'Yes, regenerate'}
                   </button>
                   <button
-                    onclick={() => showRegenerateConfirm = null}
-                    class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 font-semibold"
+                    onclick={() => (showRegenerateConfirm = null)}
+                    class="btn-secondary text-sm py-2 px-4"
                   >
                     Cancel
                   </button>
@@ -242,141 +236,227 @@
 </div>
 
 <!-- Edit Modal -->
-{#if showEditModal && editingClient}
-  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-    <div class="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4 my-8 max-h-[90vh] overflow-y-auto">
-      <h3 class="text-2xl font-bold text-gray-900 mb-4">Edit: {editingClient.clientId}</h3>
+{#if editingClient}
+  <Modal title={`Edit: ${editingClient.clientId}`} open={showEditModal} size="lg" onclose={() => (showEditModal = false)}>
+    {#if editErrors.general}
+      <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm">
+        {editErrors.general}
+      </div>
+    {/if}
 
-      {#if editErrors.general}
-        <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{editErrors.general}</div>
-      {/if}
+    <form onsubmit={handleUpdateClient} class="space-y-5">
+      <div>
+        <label for="editClientName" class="label">Client name <span class="text-red-500">*</span></label>
+        <input
+          id="editClientName"
+          type="text"
+          bind:value={editForm.clientName}
+          class="field {editErrors.clientName ? 'field-invalid' : ''}"
+        />
+        {#if editErrors.clientName}<p class="text-xs text-red-600 mt-1">{editErrors.clientName}</p>{/if}
+      </div>
 
-      <form onsubmit={(e) => { e.preventDefault(); handleUpdateClient(); }} class="space-y-4">
-
-        <div>
-          <label for="editClientName" class="block text-gray-700 text-sm font-bold mb-2">Client Name <span class="text-red-500">*</span></label>
-          <input id="editClientName" type="text" bind:value={editForm.clientName}
-            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:outline-none {editErrors.clientName ? 'border-red-500' : 'border-gray-300'}" />
-          {#if editErrors.clientName}<p class="text-red-500 text-xs italic mt-1">{editErrors.clientName}</p>{/if}
-        </div>
-
-        <div>
-          <p class="block text-gray-700 text-sm font-bold mb-2">Grant Types <span class="text-red-500">*</span></p>
-          <div class="flex flex-wrap gap-2">
-            {#each availableGrantTypes as gt}
-              <label class="flex items-center cursor-pointer p-2 border rounded hover:bg-gray-50 {editForm.grantTypes.includes(gt) ? 'bg-blue-50 border-blue-300' : 'border-gray-300'}">
-                <input type="checkbox" checked={editForm.grantTypes.includes(gt)} onchange={() => editForm.grantTypes = toggleItem(editForm.grantTypes, gt)} class="mr-2" />
-                <span class="text-sm">{gt}</span>
-              </label>
-            {/each}
-          </div>
-          {#if editErrors.grantTypes}<p class="text-red-500 text-xs italic mt-1">{editErrors.grantTypes}</p>{/if}
-        </div>
-
-        <div>
-          <p class="block text-gray-700 text-sm font-bold mb-2">Redirect URIs <span class="text-red-500">*</span></p>
-          {#each editForm.redirectUris as _, i}
-            <div class="flex gap-2 mb-2">
-              <input type="text" bind:value={editForm.redirectUris[i]}
-                class="shadow appearance-none border border-gray-300 rounded flex-1 py-2 px-3 text-gray-700 focus:outline-none" />
-              {#if editForm.redirectUris.length > 1}
-                <button type="button" onclick={() => editForm.redirectUris = editForm.redirectUris.filter((_, j) => j !== i)}
-                  class="px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200">×</button>
-              {/if}
-            </div>
+      <div>
+        <p class="label">Grant types <span class="text-red-500">*</span></p>
+        <div class="flex flex-wrap gap-2">
+          {#each AVAILABLE_GRANT_TYPES as gt}
+            <label
+              class="flex items-center cursor-pointer px-3 py-2 rounded-lg border text-sm transition-colors {editForm.grantTypes.includes(
+                gt
+              )
+                ? 'bg-primary-50 border-primary-300'
+                : 'border-gray-200 hover:bg-gray-50'}"
+            >
+              <input
+                type="checkbox"
+                checked={editForm.grantTypes.includes(gt)}
+                onchange={() => (editForm.grantTypes = toggleItem(editForm.grantTypes, gt))}
+                class="mr-2 h-4 w-4 rounded text-primary-600 focus:ring-primary-500"
+              />
+              <span>{gt}</span>
+            </label>
           {/each}
-          <button type="button" onclick={() => editForm.redirectUris = [...editForm.redirectUris, '']}
-            class="text-sm text-blue-600 hover:text-blue-800">+ Add redirect URI</button>
-          {#if editErrors.redirectUris}<p class="text-red-500 text-xs italic mt-1">{editErrors.redirectUris}</p>{/if}
         </div>
+        {#if editErrors.grantTypes}<p class="text-xs text-red-600 mt-1">{editErrors.grantTypes}</p>{/if}
+      </div>
 
-        <div>
-          <p class="block text-gray-700 text-sm font-bold mb-2">Scopes <span class="text-red-500">*</span></p>
-          <div class="flex flex-wrap gap-2">
-            {#each availableScopes as scope}
-              <label class="flex items-center cursor-pointer p-2 border rounded hover:bg-gray-50 {editForm.scopes.includes(scope) ? 'bg-purple-50 border-purple-300' : 'border-gray-300'}">
-                <input type="checkbox" checked={editForm.scopes.includes(scope)} onchange={() => editForm.scopes = toggleItem(editForm.scopes, scope)} class="mr-2" />
-                <span class="text-sm">{scope}</span>
-              </label>
-            {/each}
+      <div>
+        <p class="label">Redirect URIs <span class="text-red-500">*</span></p>
+        {#each editForm.redirectUris as _, i}
+          <div class="flex gap-2 mb-2">
+            <input
+              type="text"
+              bind:value={editForm.redirectUris[i]}
+              class="field flex-1"
+              placeholder="https://example.com/callback"
+            />
+            {#if editForm.redirectUris.length > 1}
+              <button
+                type="button"
+                onclick={() =>
+                  (editForm.redirectUris = editForm.redirectUris.filter((_, j) => j !== i))}
+                class="px-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
+                aria-label="Remove URI"
+              >
+                ×
+              </button>
+            {/if}
           </div>
-          {#if editErrors.scopes}<p class="text-red-500 text-xs italic mt-1">{editErrors.scopes}</p>{/if}
-        </div>
+        {/each}
+        <button
+          type="button"
+          onclick={() => (editForm.redirectUris = [...editForm.redirectUris, ''])}
+          class="text-sm text-primary-600 hover:text-primary-700 font-medium"
+        >
+          + Add redirect URI
+        </button>
+        {#if editErrors.redirectUris}<p class="text-xs text-red-600 mt-1">{editErrors.redirectUris}</p>{/if}
+      </div>
 
-        <div class="p-4 bg-gray-50 rounded">
-          <h4 class="font-semibold mb-3">Client Settings</h4>
-          <div class="flex gap-4">
-            <label class="flex items-center cursor-pointer">
-              <input type="checkbox" bind:checked={editForm.clientSettings.requireProofKey} class="mr-2" />
-              <span class="text-sm">Require PKCE</span>
+      <div>
+        <p class="label">Scopes <span class="text-red-500">*</span></p>
+        <div class="flex flex-wrap gap-2">
+          {#each AVAILABLE_SCOPES as scope}
+            <label
+              class="flex items-center cursor-pointer px-3 py-2 rounded-lg border text-sm transition-colors {editForm.scopes.includes(
+                scope
+              )
+                ? 'bg-purple-50 border-purple-300'
+                : 'border-gray-200 hover:bg-gray-50'}"
+            >
+              <input
+                type="checkbox"
+                checked={editForm.scopes.includes(scope)}
+                onchange={() => (editForm.scopes = toggleItem(editForm.scopes, scope))}
+                class="mr-2 h-4 w-4 rounded text-purple-600 focus:ring-purple-500"
+              />
+              <span>{scope}</span>
             </label>
-            <label class="flex items-center cursor-pointer">
-              <input type="checkbox" bind:checked={editForm.clientSettings.requireAuthorizationConsent} class="mr-2" />
-              <span class="text-sm">Require Consent</span>
+          {/each}
+        </div>
+        {#if editErrors.scopes}<p class="text-xs text-red-600 mt-1">{editErrors.scopes}</p>{/if}
+      </div>
+
+      <div class="p-4 bg-gray-50 rounded-xl">
+        <h4 class="text-sm font-semibold text-gray-900 mb-3">Client settings</h4>
+        <div class="flex flex-wrap gap-4">
+          <label class="flex items-center cursor-pointer text-sm text-gray-700">
+            <input
+              type="checkbox"
+              bind:checked={editForm.clientSettings.requireProofKey}
+              class="mr-2 h-4 w-4 rounded text-primary-600 focus:ring-primary-500"
+            />
+            Require PKCE
+          </label>
+          <label class="flex items-center cursor-pointer text-sm text-gray-700">
+            <input
+              type="checkbox"
+              bind:checked={editForm.clientSettings.requireAuthorizationConsent}
+              class="mr-2 h-4 w-4 rounded text-primary-600 focus:ring-primary-500"
+            />
+            Require consent
+          </label>
+        </div>
+      </div>
+
+      <div class="p-4 bg-gray-50 rounded-xl">
+        <h4 class="text-sm font-semibold text-gray-900 mb-3">Token settings</h4>
+        <div class="grid grid-cols-2 gap-4">
+          <label class="block">
+            <span class="block text-xs font-semibold text-gray-600 mb-1">Access token TTL (s)</span>
+            <input
+              type="number"
+              bind:value={editForm.tokenSettings.accessTokenTimeToLiveSeconds}
+              class="field text-sm py-2"
+            />
+          </label>
+          <label class="block">
+            <span class="block text-xs font-semibold text-gray-600 mb-1">Refresh token TTL (s)</span>
+            <input
+              type="number"
+              bind:value={editForm.tokenSettings.refreshTokenTimeToLiveSeconds}
+              class="field text-sm py-2"
+            />
+          </label>
+          <label class="block">
+            <span class="block text-xs font-semibold text-gray-600 mb-1">Auth code TTL (s)</span>
+            <input
+              type="number"
+              bind:value={editForm.tokenSettings.authorizationCodeTimeToLiveSeconds}
+              class="field text-sm py-2"
+            />
+          </label>
+          <div class="flex items-end">
+            <label class="flex items-center cursor-pointer text-sm text-gray-700">
+              <input
+                type="checkbox"
+                bind:checked={editForm.tokenSettings.reuseRefreshTokens}
+                class="mr-2 h-4 w-4 rounded text-primary-600 focus:ring-primary-500"
+              />
+              Reuse refresh tokens
             </label>
           </div>
         </div>
+      </div>
 
-        <div class="p-4 bg-gray-50 rounded">
-          <h4 class="font-semibold mb-3">Token Settings</h4>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-gray-700 text-xs font-bold mb-1">Access Token TTL (s)</label>
-              <input type="number" bind:value={editForm.tokenSettings.accessTokenTimeToLiveSeconds} class="shadow border rounded w-full py-2 px-3 text-gray-700 text-sm" />
-            </div>
-            <div>
-              <label class="block text-gray-700 text-xs font-bold mb-1">Refresh Token TTL (s)</label>
-              <input type="number" bind:value={editForm.tokenSettings.refreshTokenTimeToLiveSeconds} class="shadow border rounded w-full py-2 px-3 text-gray-700 text-sm" />
-            </div>
-            <div>
-              <label class="block text-gray-700 text-xs font-bold mb-1">Auth Code TTL (s)</label>
-              <input type="number" bind:value={editForm.tokenSettings.authorizationCodeTimeToLiveSeconds} class="shadow border rounded w-full py-2 px-3 text-gray-700 text-sm" />
-            </div>
-            <div class="flex items-center">
-              <label class="flex items-center cursor-pointer">
-                <input type="checkbox" bind:checked={editForm.tokenSettings.reuseRefreshTokens} class="mr-2" />
-                <span class="text-sm">Reuse Refresh Tokens</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex gap-3 justify-end pt-2">
-          <button type="button" onclick={() => showEditModal = false} disabled={isUpdating}
-            class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 font-semibold disabled:opacity-50">
-            Cancel
-          </button>
-          <button type="submit" disabled={isUpdating}
-            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold disabled:bg-blue-400">
-            {isUpdating ? 'Updating...' : 'Update Client'}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+      <div class="flex gap-3 justify-end pt-3 border-t border-gray-100">
+        <button
+          type="button"
+          onclick={() => (showEditModal = false)}
+          disabled={isUpdating}
+          class="btn-secondary"
+        >
+          Cancel
+        </button>
+        <button type="submit" disabled={isUpdating} class="btn-primary">
+          {isUpdating ? 'Saving…' : 'Update client'}
+        </button>
+      </div>
+    </form>
+  </Modal>
 {/if}
 
-<!-- Regenerated Secret Modal -->
+<!-- Regenerated secret reveal -->
 {#if regeneratedSecret}
-  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 text-center">
-      <div class="mb-4 text-green-600">
-        <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+  <Modal
+    title="Secret regenerated"
+    open={regeneratedSecret !== null}
+    size="md"
+    onclose={() => (regeneratedSecret = null)}
+  >
+    <div class="text-center">
+      <div class="w-14 h-14 mx-auto mb-4 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <h3 class="text-2xl font-bold text-gray-900 mb-2">Secret Regenerated!</h3>
-      <p class="text-gray-600 mb-4">Client: <span class="font-mono">{regeneratedSecret.clientId}</span></p>
-      <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded text-left">
-        <p class="text-yellow-800 font-semibold mb-2">⚠️ Save this secret now — it won't be shown again!</p>
-        <div class="flex items-center gap-2">
-          <code class="bg-gray-100 px-3 py-2 rounded font-mono text-sm break-all flex-1">{regeneratedSecret.secret}</code>
-          <button onclick={() => navigator.clipboard.writeText(regeneratedSecret!.secret)}
-            class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm shrink-0">Copy</button>
-        </div>
-      </div>
-      <button onclick={() => regeneratedSecret = null}
-        class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 font-semibold">Close</button>
+      <p class="text-gray-700 mb-4">
+        Client <span class="font-mono font-semibold">{regeneratedSecret.clientId}</span>
+      </p>
     </div>
-  </div>
+
+    <div class="rounded-xl bg-yellow-50 border border-yellow-200 p-4 mb-5">
+      <p class="text-sm font-medium text-yellow-900 mb-3">
+        ⚠️ Copy this secret now — it won't be shown again.
+      </p>
+      <div class="flex items-center gap-2">
+        <code class="flex-1 bg-white px-3 py-2 rounded-lg font-mono text-xs break-all border border-yellow-100">
+          {regeneratedSecret.secret}
+        </code>
+        <button
+          onclick={() => {
+            navigator.clipboard.writeText(regeneratedSecret!.secret);
+            notifications.success('Secret copied to clipboard.');
+          }}
+          class="btn-primary text-sm py-2 px-3 shrink-0"
+        >
+          Copy
+        </button>
+      </div>
+    </div>
+
+    <div class="flex justify-end">
+      <button onclick={() => (regeneratedSecret = null)} class="btn-secondary">Close</button>
+    </div>
+  </Modal>
 {/if}

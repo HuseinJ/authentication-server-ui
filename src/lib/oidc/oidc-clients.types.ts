@@ -99,6 +99,29 @@ export interface OidcClientsState {
   };
   
   export const defaultClientSettings: ClientSettings = {
-    requireProofKey: false,
+    requireProofKey: true,
     requireAuthorizationConsent: true
   };
+
+  export const AVAILABLE_GRANT_TYPES = [
+    'authorization_code',
+    'refresh_token',
+    'client_credentials',
+    'device_code'
+  ] as const;
+
+  export const AVAILABLE_AUTH_METHODS = [
+    'client_secret_basic',
+    'client_secret_post',
+    'client_secret_jwt',
+    'private_key_jwt',
+    'none'
+  ] as const;
+
+  export const AVAILABLE_SCOPES = [
+    'openid',
+    'profile',
+    'email',
+    'address',
+    'phone'
+  ] as const;
