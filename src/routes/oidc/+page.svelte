@@ -99,12 +99,16 @@
   async function handleUpdateClient(e: SubmitEvent) {
     e.preventDefault();
     if (!editingClient || !validateEditForm()) return;
+    const clean = (arr: (string | null | undefined)[]) =>
+      (arr ?? []).filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
     try {
       isUpdating = true;
       await updateOidcClient(editingClient.id, {
         ...editForm,
-        redirectUris: editForm.redirectUris.filter((u) => u.trim()),
-        postLogoutRedirectUris: editForm.postLogoutRedirectUris.filter((u) => u.trim())
+        grantTypes: clean(editForm.grantTypes),
+        scopes: clean(editForm.scopes),
+        redirectUris: clean(editForm.redirectUris),
+        postLogoutRedirectUris: clean(editForm.postLogoutRedirectUris)
       });
       notifications.success(`Client "${editForm.clientName}" updated.`);
       showEditModal = false;

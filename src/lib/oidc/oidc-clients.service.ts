@@ -21,15 +21,28 @@ const ENDPOINTS = {
 };
 
 function transformClient(backendClient: BackendOidcClient): OidcClient {
+  // Be tolerant: each item might be `"authorization_code"` (enum via @JsonValue)
+  // or `{ value: "authorization_code" }` (older serialization) or null.
+  const unwrap = (item: unknown): string | null => {
+    if (typeof item === 'string') return item;
+    if (item && typeof item === 'object' && 'value' in item) {
+      const v = (item as { value: unknown }).value;
+      return typeof v === 'string' ? v : null;
+    }
+    return null;
+  };
+  const unwrapList = (arr: unknown[]): string[] =>
+    (arr ?? []).map(unwrap).filter((v): v is string => !!v);
+
   return {
     id: backendClient.id.value,
     clientId: backendClient.clientId.value,
     clientName: backendClient.clientName.value,
-    grantTypes: backendClient.grantTypes.map(gt => gt.value),
-    authenticationMethods: backendClient.authenticationMethods.map(am => am.value),
-    redirectUris: backendClient.redirectUris.map(uri => uri.value),
-    postLogoutRedirectUris: backendClient.postLogoutRedirectUris.map(uri => uri.value),
-    scopes: backendClient.scopes.map(scope => scope.value),
+    grantTypes: unwrapList(backendClient.grantTypes as unknown[]),
+    authenticationMethods: unwrapList(backendClient.authenticationMethods as unknown[]),
+    redirectUris: unwrapList(backendClient.redirectUris as unknown[]),
+    postLogoutRedirectUris: unwrapList(backendClient.postLogoutRedirectUris as unknown[]),
+    scopes: unwrapList(backendClient.scopes as unknown[]),
     tokenSettings: backendClient.tokenSettings,
     clientSettings: backendClient.clientSettings
   };

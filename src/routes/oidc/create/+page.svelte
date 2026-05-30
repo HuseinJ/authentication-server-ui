@@ -64,11 +64,16 @@
     e.preventDefault();
     if (!validateForm()) return;
     submitting = true;
+    const clean = (arr: (string | null | undefined)[]) =>
+      (arr ?? []).filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
     try {
       const result = await createOidcClient({
         ...formData,
-        redirectUris: formData.redirectUris.filter((u) => u.trim()),
-        postLogoutRedirectUris: formData.postLogoutRedirectUris.filter((u) => u.trim())
+        grantTypes: clean(formData.grantTypes),
+        authenticationMethods: clean(formData.authenticationMethods),
+        scopes: clean(formData.scopes),
+        redirectUris: clean(formData.redirectUris),
+        postLogoutRedirectUris: clean(formData.postLogoutRedirectUris)
       });
       createdSecret = result.clientSecret;
       notifications.success(`Client "${formData.clientName}" created.`);

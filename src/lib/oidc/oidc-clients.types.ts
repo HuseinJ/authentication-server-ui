@@ -41,13 +41,15 @@ export interface OidcClientsState {
     requireAuthorizationConsent: boolean;
   }
   
-  // Backend response types
+  // Backend response types.
+  // Value-object fields (clientId, clientName, redirect URIs, scopes) serialize as { value: "..." }.
+  // Enum fields (grantTypes, authenticationMethods) serialize as plain strings via @JsonValue.
   export interface BackendOidcClient {
     id: { value: string };
     clientId: { value: string };
     clientName: { value: string };
-    grantTypes: Array<{ value: string }>;
-    authenticationMethods: Array<{ value: string }>;
+    grantTypes: string[];
+    authenticationMethods: string[];
     redirectUris: Array<{ value: string }>;
     postLogoutRedirectUris: Array<{ value: string }>;
     scopes: Array<{ value: string }>;
