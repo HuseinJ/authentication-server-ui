@@ -1,96 +1,93 @@
 <script lang="ts">
-    import { goto } from '$app/navigation';
-    import { isLoadingUsers } from '$lib/users/users.store';
-    import { initiatePasswordReset } from '$lib/users/users.service';
-    
-    let username = '';
-    let error = '';
-    let success = false;
-  
-    async function handleResetRequest() {
-      error = '';
-      
-      if (!username.trim()) {
-        error = 'Please enter your username or email';
-        return;
-      }
-  
-      try {
-        await initiatePasswordReset(username);
-        success = true;
-      } catch (err) {
-        console.error('Password reset request failed:', err);
-        error = 'Something went wrong. Please try again.';
-      }
+  import { isLoadingUsers } from '$lib/users/users.store';
+  import { initiatePasswordReset } from '$lib/users/users.service';
+  import { notifications } from '$lib/notifications/notifications.store';
+
+  let username = $state('');
+  let success = $state(false);
+  let submitting = $state(false);
+
+  async function handleResetRequest(e: SubmitEvent) {
+    e.preventDefault();
+    if (!username.trim()) {
+      notifications.warning('Please enter your username.');
+      return;
     }
-  </script>
-  
-  <div class="container mx-auto max-w-md p-6">
-    <h1 class="text-3xl font-bold mb-6">Reset Password</h1>
-    
+    submitting = true;
+    try {
+      await initiatePasswordReset(username);
+      success = true;
+    } catch {
+      // Backend deliberately returns success regardless to prevent enumeration;
+      // any thrown error here is a real network/server problem.
+      notifications.error(
+        'Something went wrong sending the reset email. Please try again.',
+        'Reset request failed'
+      );
+    } finally {
+      submitting = false;
+    }
+  }
+</script>
+
+<div class="container mx-auto px-6 py-12 sm:py-20">
+  <div class="max-w-md mx-auto">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl sm:text-4xl font-bold mb-2">
+        Reset your <span class="gradient-text">password</span>
+      </h1>
+      <p class="text-gray-600">We'll send you instructions if your account exists.</p>
+    </div>
+
     {#if success}
-      <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
-        <p class="font-bold mb-2">Check Your Email</p>
-        <p class="mb-2">If an account exists with this username, you will receive an email with instructions to reset your password.</p>
-        <p class="text-sm">Please check your inbox and spam folder.</p>
-      </div>
-      
-      <div class="space-y-3">
-        <button 
-          on:click={() => success = false}
-          class="w-full bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition-colors"
-        >
-          Request Another Reset
-        </button>
-        
-        <div class="text-center">
-          <a href="/login" class="text-blue-600 hover:underline">
-            Back to Login
-          </a>
+      <div class="card p-6 sm:p-8 text-center">
+        <div class="w-14 h-14 mx-auto mb-4 rounded-full bg-primary-50 flex items-center justify-center text-primary-600">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h2 class="text-xl font-bold text-gray-900 mb-2">Check your inbox</h2>
+        <p class="text-gray-600 text-sm mb-6">
+          If an account exists with that username, we've sent reset instructions. Check your spam folder too.
+        </p>
+        <div class="flex gap-3 justify-center">
+          <button type="button" onclick={() => (success = false)} class="btn-secondary text-sm">
+            Try another username
+          </button>
+          <a href="/login" class="btn-primary text-sm">Back to login</a>
         </div>
       </div>
     {:else}
-      <p class="text-gray-600 mb-6">
-        Enter your username or email address and we'll send you instructions to reset your password.
-      </p>
-      
-      <form on:submit|preventDefault={handleResetRequest} class="space-y-4">
-        <div>
-          <label class="block mb-2 font-medium">Username or Email</label>
-          <input 
-            type="text" 
-            bind:value={username} 
-            class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter your username or email"
-            required 
-            disabled={$isLoadingUsers}
-          />
-        </div>
-        
-        {#if error}
-          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            {error}
+      <div class="card p-6 sm:p-8">
+        <form onsubmit={handleResetRequest} class="space-y-5">
+          <div>
+            <label for="username" class="label">Username or email</label>
+            <input
+              id="username"
+              type="text"
+              bind:value={username}
+              class="field"
+              placeholder="your username"
+              required
+              disabled={$isLoadingUsers || submitting}
+            />
           </div>
-        {/if}
-        
-        <button 
-          type="submit" 
-          disabled={$isLoadingUsers}
-          class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 
-                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {#if $isLoadingUsers}
-            Sending...
-          {:else}
-            Send Reset Link
-          {/if}
-        </button>
-  
-        <div class="text-center mt-4">
-          <a href="/login" class="text-blue-600 hover:underline">
-            Back to Login
-          </a>
-        </div>
-      </form>
+
+          <button
+            type="submit"
+            disabled={$isLoadingUsers || submitting}
+            class="btn-primary w-full"
+          >
+            {submitting ? 'Sending…' : 'Send reset link'}
+          </button>
+
+          <div class="text-center text-sm">
+            <a href="/login" class="text-primary-600 hover:text-primary-700 font-medium">
+              Back to login
+            </a>
+          </div>
+        </form>
+      </div>
     {/if}
   </div>
+</div>
