@@ -123,5 +123,6 @@ export interface OidcClientsState {
     'profile',
     'email',
     'address',
-    'phone'
+    'phone',
+    'roles'
   ] as const;
