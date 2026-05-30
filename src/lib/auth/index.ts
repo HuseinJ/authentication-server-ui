@@ -30,6 +30,6 @@ export {
   hasAnyRole
 } from './auth.service';
 
-export { authenticatedFetch, createAuthInterceptor } from './auth.interceptors';
+export { authenticatedFetch } from './auth.interceptors';
 
 export { requireAuth, requireGuest, optionalAuth } from './auth.guard';

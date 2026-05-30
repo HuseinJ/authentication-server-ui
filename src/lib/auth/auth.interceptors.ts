@@ -1,10 +1,15 @@
 import { authStore } from './auth.store';
-import { BASE_URL } from './auth.service';
 
 interface RequestConfig extends RequestInit {
   skipAuth?: boolean;
 }
 
+/**
+ * Wrapper around native fetch that injects the Bearer token and logs the user
+ * out on 401. All service files use this directly — there is intentionally no
+ * `window.fetch` override (wrapping fetch and then calling fetch inside the
+ * wrapper recurses forever).
+ */
 export async function authenticatedFetch(
   url: string,
   config: RequestConfig = {}
@@ -23,7 +28,6 @@ export async function authenticatedFetch(
 
   const response = await fetch(url, { ...fetchConfig, headers });
 
-  // On 401 we have no refresh endpoint on the backend, so just log out.
   if (response.status === 401 && !skipAuth) {
     authStore.logout();
     if (typeof document !== 'undefined') {
@@ -32,34 +36,4 @@ export async function authenticatedFetch(
   }
 
   return response;
-}
-
-export function createAuthInterceptor(): () => void {
-  const originalFetch = window.fetch;
-  const authOnlyEndpoints = ['/api/auth/login'];
-
-  window.fetch = async function (
-    input: RequestInfo | URL,
-    init?: RequestInit
-  ): Promise<Response> {
-    const url =
-      typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url;
-
-    const isApiCall = url.startsWith(BASE_URL);
-    const shouldSkipAuth = authOnlyEndpoints.some((e) => url.includes(e));
-
-    if (!isApiCall || shouldSkipAuth) {
-      return originalFetch(input, init);
-    }
-
-    return authenticatedFetch(url, init as RequestConfig);
-  };
-
-  return () => {
-    window.fetch = originalFetch;
-  };
 }
