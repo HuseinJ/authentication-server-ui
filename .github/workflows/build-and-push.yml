@@ -5,7 +5,7 @@ on:
       BACKEND_API_URL:
         description: 'Backend API URL'
         required: true
-        default: 'http://localhost:8081'
+        default: 'https://authapi.hjusic.com'
 
 permissions:
   contents: read
@@ -15,7 +15,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     env:
-      IMAGE_NAME: ghcr.io/huseinj/my-svelte-app
+      IMAGE_NAME: ghcr.io/huseinj/auth-ui
       # Set a default backend URL that will be used for push events
       BACKEND_API_URL: ${{ github.event.inputs.BACKEND_API_URL || 'http://localhost:8081' }}
     
@@ -32,13 +32,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Compute image tag
+        id: tag
+        run: echo "value=$(date -u +%Y%m%d%H%M%S)-$(echo "$GITHUB_SHA" | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
       # 3. Build Docker image
       - name: Build Docker image
         run: |
           docker build \
-          --build-arg BACKEND_API_URL=${{ env.BACKEND_API_URL }} \
-          -t $IMAGE_NAME:latest .
+            --build-arg BACKEND_API_URL=${{ env.BACKEND_API_URL }} \
+            -t $IMAGE_NAME:latest \
+            -t $IMAGE_NAME:${{ steps.tag.outputs.value }} .
       
       # 4. Push Docker image
       - name: Push Docker image
-        run: docker push $IMAGE_NAME:latest
+        run: |
+          docker push $IMAGE_NAME:latest
+          docker push $IMAGE_NAME:${{ steps.tag.outputs.value }} 
