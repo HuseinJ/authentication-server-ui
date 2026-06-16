@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { login, oidcLogin, isLoading, AuthError } from '$lib/auth';
+  import { login, oidcLogin, logout, isLoading, isAuthenticated, user, AuthError } from '$lib/auth';
   import { notifications } from '$lib/notifications/notifications.store';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -9,6 +9,33 @@
   let submitting = $state(false);
 
   const isOidcFlow = $derived($page.url.searchParams.get('flow') === 'oidc');
+
+  // During an OIDC flow an already-signed-in user can either continue as
+  // themselves or switch accounts, instead of being bounced away.
+  type Choice = 'pending' | 'continue' | 'different';
+  let choice = $state<Choice>('pending');
+
+  const canChoose = $derived(isOidcFlow && $isAuthenticated && !!$user);
+  const showChooser = $derived(canChoose && choice === 'pending');
+  const continuingAsCurrent = $derived(canChoose && choice === 'continue');
+
+  function continueAsCurrent() {
+    username = $user?.username ?? '';
+    password = '';
+    choice = 'continue';
+  }
+
+  async function useDifferentAccount() {
+    await logout();
+    username = '';
+    password = '';
+    choice = 'different';
+  }
+
+  function backToChooser() {
+    password = '';
+    choice = 'pending';
+  }
 
   async function handleLogin(e: SubmitEvent) {
     e.preventDefault();
@@ -47,48 +74,84 @@
     </div>
 
     <div class="card p-6 sm:p-8">
-      <form onsubmit={handleLogin} class="space-y-5">
-        <div>
-          <label for="username" class="label">Username</label>
-          <input
-            id="username"
-            type="text"
-            autocomplete="username"
-            bind:value={username}
-            class="field"
-            placeholder="your username"
-            required
-          />
-        </div>
-
-        <div>
-          <div class="flex items-baseline justify-between">
-            <label for="password" class="label">Password</label>
-            <a href="/start-reset" class="text-sm text-primary-600 hover:text-primary-700 font-medium"
-              >Forgot password?</a
-            >
+      {#if isOidcFlow && $isLoading}
+        <p class="text-center text-gray-500 text-sm py-4">Checking your session…</p>
+      {:else if showChooser}
+        <div class="space-y-5">
+          <div class="text-center">
+            <p class="text-sm text-gray-600">You're signed in as</p>
+            <p class="font-semibold text-gray-900">{$user?.username}</p>
           </div>
-          <input
-            id="password"
-            type="password"
-            autocomplete="current-password"
-            bind:value={password}
-            class="field"
-            placeholder="••••••••"
-            required
-          />
-        </div>
 
-        <button type="submit" disabled={$isLoading || submitting} class="btn-primary w-full">
-          {submitting ? 'Signing in…' : isOidcFlow ? 'Sign in & continue' : 'Sign in'}
-        </button>
+          <button type="button" onclick={continueAsCurrent} class="btn-primary w-full">
+            Continue as {$user?.username}
+          </button>
 
-        {#if isOidcFlow}
+          <button type="button" onclick={useDifferentAccount} class="btn-secondary w-full">
+            Use a different account
+          </button>
+
           <p class="text-xs text-gray-500 text-center pt-2 border-t border-gray-100">
             You're signing in to authorize an external application.
           </p>
-        {/if}
-      </form>
+        </div>
+      {:else}
+        <form onsubmit={handleLogin} class="space-y-5">
+          {#if continuingAsCurrent}
+            <div class="flex items-center justify-between">
+              <p class="text-sm text-gray-600">
+                Signing in as <span class="font-semibold text-gray-900">{username}</span>
+              </p>
+              <button
+                type="button"
+                onclick={backToChooser}
+                class="text-sm text-primary-600 hover:text-primary-700 font-medium">Change</button
+              >
+            </div>
+          {:else}
+            <div>
+              <label for="username" class="label">Username</label>
+              <input
+                id="username"
+                type="text"
+                autocomplete="username"
+                bind:value={username}
+                class="field"
+                placeholder="your username"
+                required
+              />
+            </div>
+          {/if}
+
+          <div>
+            <div class="flex items-baseline justify-between">
+              <label for="password" class="label">Password</label>
+              <a href="/start-reset" class="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                >Forgot password?</a
+              >
+            </div>
+            <input
+              id="password"
+              type="password"
+              autocomplete="current-password"
+              bind:value={password}
+              class="field"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+
+          <button type="submit" disabled={$isLoading || submitting} class="btn-primary w-full">
+            {submitting ? 'Signing in…' : isOidcFlow ? 'Sign in & continue' : 'Sign in'}
+          </button>
+
+          {#if isOidcFlow}
+            <p class="text-xs text-gray-500 text-center pt-2 border-t border-gray-100">
+              You're signing in to authorize an external application.
+            </p>
+          {/if}
+        </form>
+      {/if}
     </div>
   </div>
 </div>

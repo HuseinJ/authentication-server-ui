@@ -13,7 +13,11 @@ export const handle: Handle = async ({ event, resolve }) => {
     throw redirect(302, '/login');
   }
 
-  if (path === '/login' && accessToken) {
+  // Keep an already-authenticated user on /login during an OIDC flow so they
+  // can choose to continue as the current user or sign in as someone else.
+  // Bouncing to /users here would discard the flow and break the OIDC login.
+  const isOidcFlow = event.url.searchParams.get('flow') === 'oidc';
+  if (path === '/login' && accessToken && !isOidcFlow) {
     throw redirect(302, '/users');
   }
 
