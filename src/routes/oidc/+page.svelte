@@ -6,8 +6,8 @@
     regenerateOidcClientSecret,
     loadOidcClients,
     type RegenerateSecretResult
-  } from '$lib/oidc/oidc-clients.service';
-  import { oidcClients, isLoadingOidcClients } from '$lib/oidc/oidc-clients.store';
+  } from '#lib/oidc/oidc-clients.service';
+  import { oidcClients, isLoadingOidcClients } from '#lib/oidc/oidc-clients.store';
   import {
     AVAILABLE_GRANT_TYPES,
     AVAILABLE_SCOPES,
@@ -15,13 +15,13 @@
     defaultTokenSettings,
     type OidcClient,
     type UpdateOidcClientRequest
-  } from '$lib/oidc/oidc-clients.types';
-  import { notifications } from '$lib/notifications/notifications.store';
+  } from '#lib/oidc/oidc-clients.types';
+  import { notifications } from '#lib/notifications/notifications.store';
   import { onMount } from 'svelte';
-  import PageHeader from '$lib/components/PageHeader.svelte';
-  import Badge from '$lib/components/Badge.svelte';
-  import ConfirmInline from '$lib/components/ConfirmInline.svelte';
-  import Modal from '$lib/components/Modal.svelte';
+  import PageHeader from '#lib/components/PageHeader.svelte';
+  import Badge from '#lib/components/Badge.svelte';
+  import ConfirmInline from '#lib/components/ConfirmInline.svelte';
+  import Modal from '#lib/components/Modal.svelte';
 
   onMount(() => {
     loadOidcClients().catch(() => {

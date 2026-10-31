@@ -1,4 +1,4 @@
-import { authenticatedFetch, BASE_URL } from '$lib/auth';
+import { authenticatedFetch, BASE_URL } from '#lib/auth';
 import { oidcClientsStore } from './oidc-clients.store';
 import {
   OidcClientsError,

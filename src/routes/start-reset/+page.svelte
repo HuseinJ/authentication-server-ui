@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { isLoadingUsers } from '$lib/users/users.store';
-  import { initiatePasswordReset } from '$lib/users/users.service';
-  import { notifications } from '$lib/notifications/notifications.store';
+  import { isLoadingUsers } from '#lib/users/users.store';
+  import { initiatePasswordReset } from '#lib/users/users.service';
+  import { notifications } from '#lib/notifications/notifications.store';
 
   let username = $state('');
   let success = $state(false);

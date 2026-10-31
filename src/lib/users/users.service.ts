@@ -1,4 +1,4 @@
-import { authenticatedFetch, BASE_URL, type User } from '$lib/auth';
+import { authenticatedFetch, BASE_URL, type User } from '#lib/auth';
 import { usersStore } from './users.store';
 import {
   UsersError,

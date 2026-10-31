@@ -6,6 +6,10 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 10
+    ignore:
+      # SvelteKit, svelte-check and typescript-eslint don't support TypeScript 7 yet
+      - dependency-name: "typescript"
+        versions: [ ">=7" ]
     groups:
       npm-minor-and-patch:
         update-types: [ "minor", "patch" ]

@@ -1,11 +1,11 @@
 <script lang="ts">
   import '../app.css';
-  import favicon from '$lib/assets/favicon.svg';
-  import { isAuthenticated, user } from '$lib/auth/auth.store';
-  import { logout } from '$lib/auth';
+  import favicon from '#lib/assets/favicon.svg';
+  import { isAuthenticated, user } from '#lib/auth/auth.store';
+  import { logout } from '#lib/auth';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
-  import Toaster from '$lib/components/Toaster.svelte';
+  import { page } from '$app/state';
+  import Toaster from '#lib/components/Toaster.svelte';
 
   let { children } = $props();
   let menuOpen = $state(false);
@@ -62,7 +62,7 @@
               href={link.href}
               target={link.external ? '_blank' : undefined}
               rel={link.external ? 'noopener noreferrer' : undefined}
-              class="hover:text-primary-600 transition-colors {$page.url.pathname === link.href
+              class="hover:text-primary-600 transition-colors {page.url.pathname === link.href
                 ? 'text-primary-600'
                 : ''}"
             >

@@ -1,9 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { createUser, updateUserRoles } from '$lib/users/users.service';
-  import { isLoadingUsers } from '$lib/users/users.store';
-  import { AVAILABLE_ROLES } from '$lib/users/users.types';
-  import { notifications } from '$lib/notifications/notifications.store';
+  import { createUser, updateUserRoles } from '#lib/users/users.service';
+  import { isLoadingUsers } from '#lib/users/users.store';
+  import { AVAILABLE_ROLES } from '#lib/users/users.types';
+  import { notifications } from '#lib/notifications/notifications.store';
 
   let formData = $state({
     username: '',
