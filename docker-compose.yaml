@@ -1,15 +1,15 @@
-version: "3.9"
-
 services:
   svelte-app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL}
+        # Baked into the build as VITE_API_URL
+        BACKEND_API_URL: ${BACKEND_API_URL:-http://localhost:8080}
     ports:
       - "3000:3000"
     environment:
       NODE_ENV: production
     env_file:
-      - .env
+      - path: .env
+        required: false
