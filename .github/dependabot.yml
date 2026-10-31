@@ -26,3 +26,8 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    ignore:
+      # Stay on the Node LTS line (even majors); move to the next LTS by hand,
+      # together with node-version in pr-build.yml
+      - dependency-name: "node"
+        update-types: [ "version-update:semver-major" ]
