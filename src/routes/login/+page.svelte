@@ -7,16 +7,16 @@
     isAuthenticated,
     user,
     AuthError,
-  } from "$lib/auth";
-  import { notifications } from "$lib/notifications/notifications.store";
+  } from "#lib/auth";
+  import { notifications } from "#lib/notifications/notifications.store";
   import { goto } from "$app/navigation";
-  import { page } from "$app/stores";
+  import { page } from "$app/state";
 
   let username = $state("");
   let password = $state("");
   let submitting = $state(false);
 
-  const isOidcFlow = $derived($page.url.searchParams.get("flow") === "oidc");
+  const isOidcFlow = $derived(page.url.searchParams.get("flow") === "oidc");
 
   // During an OIDC flow an already-signed-in user can either continue as
   // themselves or switch accounts, instead of being bounced away.

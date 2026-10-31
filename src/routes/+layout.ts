@@ -1,5 +1,5 @@
-import { browser } from '$app/environment';
-import { initAuth } from '$lib/auth/auth.init';
+import { browser } from '$app/env';
+import { initAuth } from '#lib/auth/auth.init';
 
 export const ssr = false; // Disable SSR if your app is client-side only
 

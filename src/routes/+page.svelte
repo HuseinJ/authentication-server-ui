@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { isAuthenticated, isLoading } from '$lib/auth/auth.store';
+  import { isAuthenticated, isLoading } from '#lib/auth/auth.store';
   import { goto } from '$app/navigation';
 
   $effect(() => {

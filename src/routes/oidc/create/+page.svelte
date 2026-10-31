@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { createOidcClient } from '$lib/oidc/oidc-clients.service';
-  import { isLoadingOidcClients } from '$lib/oidc/oidc-clients.store';
+  import { createOidcClient } from '#lib/oidc/oidc-clients.service';
+  import { isLoadingOidcClients } from '#lib/oidc/oidc-clients.store';
   import {
     AVAILABLE_AUTH_METHODS,
     AVAILABLE_GRANT_TYPES,
@@ -9,8 +9,8 @@
     defaultClientSettings,
     defaultTokenSettings,
     type CreateOidcClientRequest
-  } from '$lib/oidc/oidc-clients.types';
-  import { notifications } from '$lib/notifications/notifications.store';
+  } from '#lib/oidc/oidc-clients.types';
+  import { notifications } from '#lib/notifications/notifications.store';
 
   let formData = $state<CreateOidcClientRequest>({
     clientId: '',

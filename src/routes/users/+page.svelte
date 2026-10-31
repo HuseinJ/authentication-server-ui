@@ -1,20 +1,20 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { user } from '$lib/auth';
+  import { user } from '#lib/auth';
   import {
     deleteUser,
     updateUserRoles,
     changePassword,
     loadUsers
-  } from '$lib/users/users.service';
-  import { users as usersStore, isLoadingUsers } from '$lib/users/users.store';
-  import { AVAILABLE_ROLES } from '$lib/users/users.types';
-  import { notifications } from '$lib/notifications/notifications.store';
+  } from '#lib/users/users.service';
+  import { users as usersStore, isLoadingUsers } from '#lib/users/users.store';
+  import { AVAILABLE_ROLES } from '#lib/users/users.types';
+  import { notifications } from '#lib/notifications/notifications.store';
   import { onMount } from 'svelte';
-  import PageHeader from '$lib/components/PageHeader.svelte';
-  import Badge from '$lib/components/Badge.svelte';
-  import ConfirmInline from '$lib/components/ConfirmInline.svelte';
-  import Modal from '$lib/components/Modal.svelte';
+  import PageHeader from '#lib/components/PageHeader.svelte';
+  import Badge from '#lib/components/Badge.svelte';
+  import ConfirmInline from '#lib/components/ConfirmInline.svelte';
+  import Modal from '#lib/components/Modal.svelte';
 
   onMount(() => {
     loadUsers().catch(() => {

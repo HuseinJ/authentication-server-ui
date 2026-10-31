@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { notifications, type ToastKind } from '$lib/notifications/notifications.store';
+  import { notifications, type ToastKind } from '#lib/notifications/notifications.store';
   import { fly, fade } from 'svelte/transition';
 
   const styles: Record<ToastKind, { bg: string; border: string; icon: string }> = {

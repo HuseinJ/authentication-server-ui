@@ -1,15 +1,15 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
-  import { completePasswordReset } from '$lib/users/users.service';
-  import { notifications } from '$lib/notifications/notifications.store';
+  import { page } from '$app/state';
+  import { completePasswordReset } from '#lib/users/users.service';
+  import { notifications } from '#lib/notifications/notifications.store';
 
   let newPassword = $state('');
   let confirmPassword = $state('');
   let submitting = $state(false);
 
-  const token = $derived($page.url.searchParams.get('token') ?? '');
-  const usernameParam = $derived($page.url.searchParams.get('username') ?? '');
+  const token = $derived(page.url.searchParams.get('token') ?? '');
+  const usernameParam = $derived(page.url.searchParams.get('username') ?? '');
   const passwordsMatch = $derived(
     newPassword.length === 0 || confirmPassword.length === 0 || newPassword === confirmPassword
   );
