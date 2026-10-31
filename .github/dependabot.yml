@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # Wait after a release before proposing it; security updates bypass this
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
     open-pull-requests-limit: 10
     ignore:
       # SvelteKit, svelte-check and typescript-eslint don't support TypeScript 7 yet
@@ -21,6 +25,10 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # Wait after a release before proposing it; security updates bypass this
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
     groups:
       github-actions:
         patterns: [ "*" ]
@@ -30,6 +38,10 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # Wait after a release before proposing it; security updates bypass this
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
     ignore:
       # Stay on the Node LTS line (even majors); move to the next LTS by hand,
       # together with node-version in pr-build.yml
