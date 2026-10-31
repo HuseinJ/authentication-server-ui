@@ -1,0 +1,50 @@
+name: PR Build
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+  dependabot-auto-merge:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
+
+    steps:
+      - name: Merge pull request
+        run: gh pr merge --squash --delete-branch "$PR_URL"
+
+      # Merges done with GITHUB_TOKEN don't trigger push workflows, so build and publish main explicitly
+      - name: Trigger Docker build on main
+        run: gh workflow run build-and-push.yml --ref main
