@@ -51,3 +51,17 @@ export interface CompleteResetPasswordRequest {
 
 export const AVAILABLE_ROLES = ['ROLE_ADMIN', 'ROLE_GUEST'] as const;
 export type Role = (typeof AVAILABLE_ROLES)[number];
+
+export function roleLabel(role: string): string {
+  const name = role.replace(/^ROLE_/, '').toLowerCase();
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+export const ROLE_OPTIONS = AVAILABLE_ROLES.map((role) => ({ value: role, label: roleLabel(role) }));
+
+export interface NewUser {
+  username: string;
+  email: string;
+  password: string;
+  roles: string[];
+}

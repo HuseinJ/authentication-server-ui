@@ -1,80 +1,54 @@
 <script lang="ts">
-  /**
-   * Second step of the OIDC browser login. The auth server redirects here after
-   * the password step when the user has a second factor enrolled:
-   *   /login/mfa?flow=oidc&factor.type=totp&factor.reason=missing
-   * and back here with `error=true` after a rejected code.
-   */
-  import { oidcTotpLogin } from "#lib/auth";
-  import TotpCodeInput from "#lib/components/TotpCodeInput.svelte";
-  import { FACTOR_LABELS } from "#lib/mfa/mfa.types";
-  import { page } from "$app/state";
+  import { page } from '$app/state';
+  import { oidcTotpLogin } from '#lib/auth';
+  import AuthLayout from '#lib/components/layout/AuthLayout.svelte';
+  import TotpForm from '#lib/components/auth/TotpForm.svelte';
+  import Notice from '#lib/components/ui/Notice.svelte';
+  import { FACTOR_LABELS } from '#lib/mfa/mfa.types';
 
-  let code = $state("");
-  let submitting = $state(false);
+  let busy = $state(false);
 
-  const factor = $derived(page.url.searchParams.get("factor.type") ?? "totp");
-  const hasError = $derived(page.url.searchParams.get("error") === "true");
-  const isExpired = $derived(page.url.searchParams.get("factor.reason") === "expired");
-  const isSupported = $derived(factor === "totp");
+  const factor = $derived(page.url.searchParams.get('factor.type') ?? 'totp');
+  const isSupported = $derived(factor === 'totp');
+  const isExpired = $derived(page.url.searchParams.get('factor.reason') === 'expired');
+  const rejected = $derived(page.url.searchParams.get('error') === 'true');
 
-  function handleSubmit(e: SubmitEvent) {
-    e.preventDefault();
-    if (submitting || code.length !== 6) return;
-    submitting = true;
+  const lede = $derived(
+    isExpired
+      ? 'Your last check expired. Enter a fresh code from your authenticator app to continue.'
+      : 'Your account uses two-factor authentication. Enter the 6-digit code from your authenticator app to continue.'
+  );
+
+  function verify(code: string) {
+    busy = true;
     oidcTotpLogin(code);
-    // the browser follows the server's redirect from the form submission
   }
 </script>
 
-<div class="container mx-auto px-6 py-12 sm:py-20">
-  <div class="max-w-md mx-auto">
-    <div class="text-center mb-8">
-      <h1 class="text-3xl sm:text-4xl font-bold mb-2">
-        Verify it's <span class="gradient-text">you</span>
-      </h1>
-      <p class="text-gray-600">
-        {isExpired
-          ? "Your verification expired. Please confirm again to continue."
-          : "Your account is protected with two-factor authentication."}
-      </p>
-    </div>
+<AuthLayout title="Verify" {lede}>
+  {#if !isSupported}
+    <Notice tone="error">
+      This sign-in asks for {FACTOR_LABELS[factor] ?? factor}, which this page can't handle yet. Go
+      back to the application and start the sign-in again.
+    </Notice>
+  {:else}
+    <TotpForm
+      {busy}
+      error={rejected
+        ? 'That code didn\'t match. After several wrong codes, verification locks for a few minutes.'
+        : undefined}
+      submitLabel="Verify and continue"
+      onsubmit={verify}
+    />
+    <p class="help">Lost your phone? Ask an administrator to reset your two-factor authentication.</p>
+  {/if}
+</AuthLayout>
 
-    <div class="card p-6 sm:p-8">
-      {#if !isSupported}
-        <p class="text-sm text-gray-700">
-          This sign-in requires <strong>{FACTOR_LABELS[factor] ?? factor}</strong>, which
-          this page does not support yet. Return to the application and try again.
-        </p>
-      {:else}
-        <form onsubmit={handleSubmit} class="space-y-5">
-          {#if hasError}
-            <div class="p-3 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm">
-              That code didn't work. Check your authenticator app and try again. After
-              several failed attempts, verification is locked for a few minutes.
-            </div>
-          {/if}
-
-          <p class="text-sm text-gray-600">
-            Open your authenticator app and enter the 6-digit code for this account.
-          </p>
-
-          <TotpCodeInput bind:value={code} invalid={hasError} autofocus />
-
-          <button
-            type="submit"
-            disabled={submitting || code.length !== 6}
-            class="btn-primary w-full"
-          >
-            {submitting ? "Verifying…" : "Verify & continue"}
-          </button>
-
-          <p class="text-xs text-gray-500 text-center pt-2 border-t border-gray-100">
-            You're signing in to authorize an external application. Lost access to your
-            authenticator? Ask an administrator to reset it.
-          </p>
-        </form>
-      {/if}
-    </div>
-  </div>
-</div>
+<style>
+  .help {
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-rule);
+    font-family: var(--font-text);
+    color: var(--color-moss);
+  }
+</style>

@@ -1,92 +1,94 @@
 @import 'tailwindcss';
-@plugin '@tailwindcss/forms';
-@plugin '@tailwindcss/typography';
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/source-serif-4';
+@import '@fontsource-variable/jetbrains-mono';
 
 @theme {
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
+  --color-paper: #edf0ea;
+  --color-surface: #f6f8f4;
+  --color-ink: #16211b;
+  --color-pine: #12402f;
+  --color-pine-deep: #0c2b20;
+  --color-lichen: #c9dc86;
+  --color-moss: #5a675f;
+  --color-rule: #c8d1c9;
+  --color-rust: #9b3b26;
+  --color-rust-deep: #7a2c1b;
+  --color-rust-wash: #f4e4dd;
+  --color-slip-text: #e3ebe4;
 
-  --color-neutral-50: #fafafa;
-  --color-neutral-100: #f5f5f5;
-  --color-neutral-200: #e5e5e5;
-  --color-neutral-700: #404040;
-  --color-neutral-800: #262626;
-  --color-neutral-900: #171717;
+  --font-display: 'Archivo Variable', 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --font-text: 'Source Serif 4 Variable', 'Source Serif Pro', Georgia, serif;
+  --font-code: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.3125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2.25rem;
 }
 
 @layer base {
+  :root {
+    --gutter: clamp(1.25rem, 4vw, 3.5rem);
+    color-scheme: light;
+  }
+
   html {
-    background: linear-gradient(180deg, #fafafa 0%, #eff6ff 100%);
-    min-height: 100%;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   body {
-    @apply text-gray-900 antialiased;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: var(--color-lichen);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-pine);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
   }
 }
 
 @layer components {
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary-500
-           text-white font-semibold shadow-md hover:bg-primary-600 hover:shadow-xl
-           hover:-translate-y-0.5 transition-all
-           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-md;
+  .wrap {
+    width: 100%;
+    max-width: 76rem;
+    margin-inline: auto;
+    padding-inline: var(--gutter);
   }
 
-  .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-white
-           text-gray-700 font-semibold border border-gray-200 shadow-sm
-           hover:border-primary-300 hover:text-primary-600 hover:shadow-md
-           transition-all
-           disabled:opacity-50 disabled:cursor-not-allowed;
+  .text-link {
+    color: var(--color-pine);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+    text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
   }
 
-  .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-red-600
-           text-white font-semibold shadow-md hover:bg-red-700 hover:shadow-xl
-           transition-all
-           disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-md;
-  }
-
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-gray-600
-           font-medium hover:bg-gray-100 hover:text-gray-900 transition-colors
-           disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-
-  .field {
-    @apply w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-900
-           placeholder:text-gray-400
-           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
-           transition-shadow
-           disabled:bg-gray-50 disabled:text-gray-500;
-  }
-
-  .field-invalid {
-    @apply border-red-400 focus:ring-red-500;
-  }
-
-  .label {
-    @apply block text-sm font-medium text-gray-700 mb-1.5;
-  }
-
-  .card {
-    @apply bg-white rounded-xl border border-gray-100 shadow-sm;
-  }
-
-  .card-hover {
-    @apply transition-all duration-300 hover:shadow-lg hover:border-primary-200;
-  }
-
-  .gradient-text {
-    @apply text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-primary-700;
+  .text-link:hover {
+    text-decoration-color: currentColor;
+    text-decoration-thickness: 2px;
   }
 }
