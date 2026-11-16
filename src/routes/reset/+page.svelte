@@ -1,117 +1,80 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { completePasswordReset } from '#lib/users/users.service';
+  import AuthLayout from '#lib/components/layout/AuthLayout.svelte';
+  import Button from '#lib/components/ui/Button.svelte';
+  import Form from '#lib/components/ui/Form.svelte';
+  import Notice from '#lib/components/ui/Notice.svelte';
+  import TextField from '#lib/components/ui/TextField.svelte';
   import { notifications } from '#lib/notifications/notifications.store';
+  import { completePasswordReset } from '#lib/users/users.service';
+  import { MIN_PASSWORD_LENGTH, hasErrors, newPasswordErrors, type FieldErrors } from '#lib/validation';
 
-  let newPassword = $state('');
-  let confirmPassword = $state('');
-  let submitting = $state(false);
+  let password = $state('');
+  let confirmation = $state('');
+  let errors = $state<FieldErrors<'password' | 'confirmation'>>({});
+  let failure = $state<string>();
+  let busy = $state(false);
 
   const token = $derived(page.url.searchParams.get('token') ?? '');
-  const usernameParam = $derived(page.url.searchParams.get('username') ?? '');
-  const passwordsMatch = $derived(
-    newPassword.length === 0 || confirmPassword.length === 0 || newPassword === confirmPassword
-  );
-  const linkValid = $derived(!!token && !!usernameParam);
+  const username = $derived(page.url.searchParams.get('username') ?? '');
+  const linkIsComplete = $derived(token !== '' && username !== '');
 
-  async function handleSubmit(e: SubmitEvent) {
-    e.preventDefault();
-    if (!linkValid) {
-      notifications.error('Reset link is missing the token or username.', 'Invalid link');
-      return;
-    }
-    if (newPassword.length < 8) {
-      notifications.warning('Password must be at least 8 characters.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      notifications.warning('Passwords do not match.');
-      return;
-    }
+  async function savePassword() {
+    errors = newPasswordErrors(password, confirmation);
+    if (hasErrors(errors)) return;
 
-    submitting = true;
+    busy = true;
+    failure = undefined;
     try {
-      await completePasswordReset(usernameParam, token, newPassword);
-      notifications.success('Password reset successfully. You can now sign in.');
-      goto('/login');
+      await completePasswordReset(username, token, password);
+      notifications.success('Saved your new password. Sign in with it now.');
+      await goto(resolve('/login'));
     } catch {
-      notifications.error(
-        'This reset link is invalid or has expired. Request a new one.',
-        'Reset failed'
-      );
+      failure = 'This reset link has expired or was already used. Request a new one.';
     } finally {
-      submitting = false;
+      busy = false;
     }
   }
 </script>
 
-<div class="container mx-auto px-6 py-12 sm:py-20">
-  <div class="max-w-md mx-auto">
-    <div class="text-center mb-8">
-      <h1 class="text-3xl sm:text-4xl font-bold mb-2">
-        Choose a <span class="gradient-text">new password</span>
-      </h1>
-      <p class="text-gray-600">Use at least 8 characters.</p>
-    </div>
-
-    <div class="card p-6 sm:p-8">
-      {#if !linkValid}
-        <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 mb-5">
-          This reset link is missing required information. Please request a new one.
-        </div>
-        <a href="/start-reset" class="btn-primary w-full">Request a new link</a>
-      {:else}
-        <form onsubmit={handleSubmit} class="space-y-5">
-          <div>
-            <label for="newPassword" class="label">New password</label>
-            <input
-              id="newPassword"
-              type="password"
-              autocomplete="new-password"
-              bind:value={newPassword}
-              class="field"
-              placeholder="••••••••"
-              minlength="8"
-              required
-              disabled={submitting}
-            />
-            <p class="text-xs text-gray-500 mt-1">Minimum 8 characters.</p>
-          </div>
-
-          <div>
-            <label for="confirmPassword" class="label">Confirm new password</label>
-            <input
-              id="confirmPassword"
-              type="password"
-              autocomplete="new-password"
-              bind:value={confirmPassword}
-              class="field {!passwordsMatch ? 'field-invalid' : ''}"
-              placeholder="••••••••"
-              minlength="8"
-              required
-              disabled={submitting}
-            />
-            {#if !passwordsMatch}
-              <p class="text-xs text-red-600 mt-1">Passwords do not match.</p>
-            {/if}
-          </div>
-
-          <button
-            type="submit"
-            disabled={submitting || !passwordsMatch}
-            class="btn-primary w-full"
-          >
-            {submitting ? 'Resetting…' : 'Reset password'}
-          </button>
-
-          <div class="text-center text-sm">
-            <a href="/login" class="text-primary-600 hover:text-primary-700 font-medium"
-              >Back to login</a
-            >
-          </div>
-        </form>
-      {/if}
-    </div>
-  </div>
-</div>
+<AuthLayout
+  title="New password"
+  lede={linkIsComplete
+    ? `Choose a new password for ${username}. Use at least ${MIN_PASSWORD_LENGTH} characters.`
+    : 'This link is missing part of its address, so it can\'t be used. Request a new reset link.'}
+>
+  {#if !linkIsComplete}
+    <Button href={resolve('/start-reset')}>Request a new link</Button>
+  {:else}
+    {#if failure}
+      <Notice tone="error">
+        {failure} <a class="text-link" href={resolve('/start-reset')}>Request a new link</a>
+      </Notice>
+    {/if}
+    <Form onsubmit={savePassword}>
+      <TextField
+        label="New password"
+        type="password"
+        bind:value={password}
+        autocomplete="new-password"
+        error={errors.password}
+        hint="At least {MIN_PASSWORD_LENGTH} characters."
+        required
+      />
+      <TextField
+        label="Repeat new password"
+        type="password"
+        bind:value={confirmation}
+        autocomplete="new-password"
+        error={errors.confirmation}
+        required
+      />
+      {#snippet actions()}
+        <Button type="submit" {busy}>{busy ? 'Saving…' : 'Save new password'}</Button>
+        <a class="text-link" href={resolve('/login')}>Back to sign in</a>
+      {/snippet}
+    </Form>
+  {/if}
+</AuthLayout>

@@ -128,3 +128,27 @@ export interface OidcClientsState {
     'phone',
     'roles'
   ] as const;
+export const GRANT_TYPE_OPTIONS = [
+  { value: 'authorization_code', label: 'Authorization code' },
+  { value: 'refresh_token', label: 'Refresh token' },
+  { value: 'client_credentials', label: 'Client credentials' },
+  { value: 'device_code', label: 'Device code' }
+] as const satisfies readonly { value: (typeof AVAILABLE_GRANT_TYPES)[number]; label: string }[];
+
+export const AUTH_METHOD_OPTIONS = [
+  { value: 'client_secret_basic', label: 'Secret in Basic header' },
+  { value: 'client_secret_post', label: 'Secret in request body' },
+  { value: 'client_secret_jwt', label: 'Secret-signed JWT' },
+  { value: 'private_key_jwt', label: 'Private-key JWT' },
+  { value: 'none', label: 'None (public client)' }
+] as const satisfies readonly { value: (typeof AVAILABLE_AUTH_METHODS)[number]; label: string }[];
+
+export const SCOPE_OPTIONS = AVAILABLE_SCOPES.map((scope) => ({ value: scope, label: scope }));
+
+export function grantTypeLabel(grantType: string): string {
+  return GRANT_TYPE_OPTIONS.find((option) => option.value === grantType)?.label ?? grantType;
+}
+
+export function isPublicClient(authenticationMethods: string[]): boolean {
+  return authenticationMethods.includes('none');
+}
