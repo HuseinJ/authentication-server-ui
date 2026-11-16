@@ -91,7 +91,7 @@
   }
 
   .quiet {
-    padding-inline: 0.25rem;
+    padding-inline: 0;
     color: var(--color-pine);
     text-decoration: underline;
     text-decoration-thickness: 1px;
