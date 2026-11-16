@@ -15,6 +15,8 @@
   import Badge from '#lib/components/Badge.svelte';
   import ConfirmInline from '#lib/components/ConfirmInline.svelte';
   import Modal from '#lib/components/Modal.svelte';
+  import { resetUserTotp } from '#lib/mfa/mfa.service';
+  import { MfaError } from '#lib/mfa/mfa.types';
 
   onMount(() => {
     loadUsers().catch(() => {
@@ -25,6 +27,29 @@
   // Delete state
   let deletingUser = $state<string | null>(null);
   let showDeleteConfirm = $state<string | null>(null);
+
+  // Two-factor reset state
+  let showResetMfaConfirm = $state<string | null>(null);
+  let resettingMfa = $state<string | null>(null);
+
+  async function handleResetMfa(username: string) {
+    try {
+      resettingMfa = username;
+      await resetUserTotp(username);
+      notifications.success(`Two-factor authentication reset for "${username}".`);
+    } catch (err) {
+      const message =
+        err instanceof MfaError && err.status === 404
+          ? `"${username}" has no authenticator app set up.`
+          : err instanceof Error
+            ? err.message
+            : 'Failed to reset two-factor authentication.';
+      notifications.error(message, 'Reset failed');
+    } finally {
+      resettingMfa = null;
+      showResetMfaConfirm = null;
+    }
+  }
 
   // Password modal state
   let showPasswordModal = $state(false);
@@ -184,7 +209,21 @@
                   Edit roles
                 </button>
                 <button
-                  onclick={() => (showDeleteConfirm = userItem.username)}
+                  onclick={() => {
+                    showDeleteConfirm = null;
+                    showResetMfaConfirm = userItem.username;
+                  }}
+                  disabled={resettingMfa === userItem.username}
+                  class="btn-secondary text-sm py-1.5 px-3"
+                  title="Remove this user's authenticator app, e.g. after a lost phone"
+                >
+                  Reset 2FA
+                </button>
+                <button
+                  onclick={() => {
+                    showResetMfaConfirm = null;
+                    showDeleteConfirm = userItem.username;
+                  }}
                   disabled={deletingUser === userItem.username}
                   class="btn-danger text-sm py-1.5 px-3"
                 >
@@ -192,6 +231,16 @@
                 </button>
               </div>
             </div>
+
+            {#if showResetMfaConfirm === userItem.username}
+              <ConfirmInline
+                message={`Reset two-factor authentication for "${userItem.username}"? They can sign in with only their password until they set it up again.`}
+                confirmLabel="Yes, reset"
+                isLoading={resettingMfa === userItem.username}
+                onconfirm={() => handleResetMfa(userItem.username)}
+                oncancel={() => (showResetMfaConfirm = null)}
+              />
+            {/if}
 
             {#if showDeleteConfirm === userItem.username}
               <ConfirmInline

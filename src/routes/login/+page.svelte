@@ -1,13 +1,16 @@
 <script lang="ts">
   import {
     login,
+    completeTotpLogin,
     oidcLogin,
     logout,
     isLoading,
     isAuthenticated,
     user,
     AuthError,
+    type MfaChallenge,
   } from "#lib/auth";
+  import TotpCodeInput from "#lib/components/TotpCodeInput.svelte";
   import { notifications } from "#lib/notifications/notifications.store";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
@@ -15,6 +18,11 @@
   let username = $state("");
   let password = $state("");
   let submitting = $state(false);
+
+  // Second step of the (non-OIDC) login for users with an authenticator app.
+  let mfaChallenge = $state<MfaChallenge | null>(null);
+  let totpCode = $state("");
+  let totpError = $state<string | null>(null);
 
   const isOidcFlow = $derived(page.url.searchParams.get("flow") === "oidc");
 
@@ -54,9 +62,15 @@
         oidcLogin({ username, password });
         // browser performs the redirect from the form submission
       } else {
-        await login({ username, password });
-        notifications.success(`Welcome back, ${username}`);
-        goto("/users");
+        const result = await login({ username, password });
+        if (result.status === "mfa_required") {
+          mfaChallenge = result.challenge;
+          totpCode = "";
+          totpError = null;
+          password = "";
+          return;
+        }
+        welcome();
       }
     } catch (error) {
       const message =
@@ -69,6 +83,46 @@
     } finally {
       submitting = false;
     }
+  }
+
+  async function handleTotp(e: SubmitEvent) {
+    e.preventDefault();
+    const challenge = mfaChallenge;
+    if (submitting || !challenge) return;
+    submitting = true;
+    totpError = null;
+    try {
+      await completeTotpLogin(challenge.mfaToken, totpCode);
+      mfaChallenge = null;
+      welcome();
+    } catch (error) {
+      if (error instanceof AuthError && error.retryMfaToken) {
+        // Wrong code: the backend issued a fresh challenge, so the user can retry.
+        mfaChallenge = { ...challenge, mfaToken: error.retryMfaToken };
+        totpError = "That code didn't work. Check your authenticator app and try again.";
+        totpCode = "";
+      } else {
+        const message =
+          error instanceof AuthError && error.status === 429
+            ? "Too many invalid codes. Wait a few minutes, then sign in again."
+            : "Your sign-in expired. Please enter your password again.";
+        notifications.error(message, "Verification failed");
+        cancelTotp();
+      }
+    } finally {
+      submitting = false;
+    }
+  }
+
+  function cancelTotp() {
+    mfaChallenge = null;
+    totpCode = "";
+    totpError = null;
+  }
+
+  function welcome() {
+    notifications.success(`Welcome back, ${username}`);
+    goto("/users");
   }
 </script>
 
@@ -90,6 +144,35 @@
         <p class="text-center text-gray-500 text-sm py-4">
           Checking your session…
         </p>
+      {:else if mfaChallenge}
+        <form onsubmit={handleTotp} class="space-y-5">
+          <div class="text-center">
+            <p class="font-semibold text-gray-900">Two-factor authentication</p>
+            <p class="text-sm text-gray-600 mt-1">
+              Enter the 6-digit code from your authenticator app.
+            </p>
+          </div>
+
+          {#if totpError}
+            <div class="p-3 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm">
+              {totpError}
+            </div>
+          {/if}
+
+          <TotpCodeInput bind:value={totpCode} invalid={!!totpError} autofocus />
+
+          <button
+            type="submit"
+            disabled={submitting || totpCode.length !== 6}
+            class="btn-primary w-full"
+          >
+            {submitting ? "Verifying…" : "Verify"}
+          </button>
+
+          <button type="button" onclick={cancelTotp} class="btn-ghost w-full text-sm">
+            Back to sign in
+          </button>
+        </form>
       {:else if showChooser}
         <div class="space-y-5">
           <div class="text-center">

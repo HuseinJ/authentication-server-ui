@@ -5,7 +5,10 @@ export type {
   LoginRequest,
   AuthResponse,
   AuthState,
-  TokenData
+  TokenData,
+  MfaChallenge,
+  MfaLoginRequest,
+  LoginResult
 } from './auth.types';
 
 export { AuthError } from './auth.types';
@@ -22,7 +25,9 @@ export {
 export {
   BASE_URL,
   login,
+  completeTotpLogin,
   oidcLogin,
+  oidcTotpLogin,
   logout,
   getCurrentUser,
   initializeAuth,
