@@ -39,6 +39,7 @@
     font-stretch: 125%;
     letter-spacing: -0.035em;
     line-height: 0.84;
+    padding-bottom: 0.1em;
     animation: widen 1.1s cubic-bezier(0.2, 0.75, 0.15, 1) 0.1s both;
   }
 

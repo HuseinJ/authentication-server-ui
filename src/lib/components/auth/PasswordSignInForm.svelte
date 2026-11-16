@@ -20,13 +20,17 @@
 
   let username = $state('');
   let password = $state('');
-
-  const effectiveUsername = $derived(fixedUsername ?? username);
-  const canSubmit = $derived(effectiveUsername.trim().length > 0 && password.length > 0);
+  let errors = $state<{ username?: string; password?: string }>({});
 
   function submit() {
-    if (!canSubmit || busy) return;
-    onsubmit({ username: effectiveUsername.trim(), password });
+    if (busy) return;
+    const name = (fixedUsername ?? username).trim();
+    errors = {
+      username: name ? undefined : 'Enter your username.',
+      password: password ? undefined : 'Enter your password.'
+    };
+    if (errors.username || errors.password) return;
+    onsubmit({ username: name, password });
   }
 </script>
 
@@ -42,6 +46,7 @@
     <TextField
       label="Username"
       bind:value={username}
+      error={errors.username}
       autocomplete="username"
       autocapitalize="none"
       spellcheck={false}
@@ -53,12 +58,13 @@
     label="Password"
     type="password"
     bind:value={password}
+    error={errors.password}
     autocomplete="current-password"
     required
   />
 
   {#snippet actions()}
-    <Button type="submit" {busy} disabled={!canSubmit}>{busy ? 'Signing in…' : submitLabel}</Button>
+    <Button type="submit" {busy}>{busy ? 'Signing in…' : submitLabel}</Button>
     <a class="text-link" href={resolve('/start-reset')}>Forgot your password?</a>
   {/snippet}
 </Form>
