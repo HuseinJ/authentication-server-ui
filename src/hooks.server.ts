@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { Handle } from '@sveltejs/kit/hooks';
 
-const PROTECTED_PREFIXES = ['/users', '/oidc'];
+const PROTECTED_PREFIXES = ['/users', '/oidc', '/account'];
 
 export const handle: Handle = async ({ event, resolve }) => {
   const accessToken = event.cookies.get('accessToken') ?? null;

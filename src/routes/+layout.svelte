@@ -29,7 +29,8 @@
     $isAuthenticated
       ? [
           { href: '/users', label: 'Users' },
-          { href: '/oidc', label: 'OIDC Clients' }
+          { href: '/oidc', label: 'OIDC Clients' },
+          { href: '/account', label: 'Account' }
         ]
       : [
           { href: 'https://www.hjusic.com', label: 'About', external: true },

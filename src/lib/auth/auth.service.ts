@@ -1,13 +1,22 @@
 import { authStore, transformUser } from './auth.store';
-import type { LoginRequest, AuthResponse, User, TokenData } from './auth.types';
+import type {
+  LoginRequest,
+  AuthResponse,
+  User,
+  TokenData,
+  MfaChallenge,
+  LoginResult
+} from './auth.types';
 import { AuthError } from './auth.types';
 
 export const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 const ENDPOINTS = {
   LOGIN: `${BASE_URL}/api/auth/login`,
+  LOGIN_TOTP: `${BASE_URL}/api/auth/login/mfa/totp`,
   ME: `${BASE_URL}/api/user/me`,
-  OIDC_LOGIN: `${BASE_URL}/oauth2/login`
+  OIDC_LOGIN: `${BASE_URL}/oauth2/login`,
+  OIDC_LOGIN_TOTP: `${BASE_URL}/oauth2/login/mfa/totp`
 };
 
 function saveTokensToCookies(tokens: TokenData): void {
@@ -33,13 +42,15 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
 
 async function parseError(response: Response): Promise<AuthError> {
   let message = response.statusText || 'Request failed';
+  let retryMfaToken: string | undefined;
   try {
     const data = await response.json();
     message = data.error || data.message || message;
+    retryMfaToken = data.mfaToken;
   } catch {
     // ignore
   }
-  return new AuthError(message, response.status);
+  return new AuthError(message, response.status, undefined, retryMfaToken);
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -47,7 +58,29 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function login(credentials: LoginRequest): Promise<string> {
+async function storeSession(data: AuthResponse): Promise<string> {
+  const tokenData: TokenData = {
+    token: data.token,
+    refreshToken: data.refreshToken,
+    expiresAt: data.expiresIn ? Date.now() + data.expiresIn : undefined
+  };
+
+  authStore.setTokens(tokenData);
+  saveTokensToCookies(tokenData);
+
+  await getCurrentUser();
+  return data.token;
+}
+
+function isMfaChallenge(data: AuthResponse | MfaChallenge): data is MfaChallenge {
+  return (data as MfaChallenge).mfaRequired === true;
+}
+
+/**
+ * Password login. Users with a second factor enrolled get an MFA challenge
+ * instead of a session; complete it with {@link completeTotpLogin}.
+ */
+export async function login(credentials: LoginRequest): Promise<LoginResult> {
   authStore.setLoading(true);
   authStore.clearError();
 
@@ -58,18 +91,12 @@ export async function login(credentials: LoginRequest): Promise<string> {
       body: JSON.stringify(credentials)
     });
 
-    const data = await handleResponse<AuthResponse>(response);
-    const tokenData: TokenData = {
-      token: data.token,
-      refreshToken: data.refreshToken,
-      expiresAt: data.expiresIn ? Date.now() + data.expiresIn : undefined
-    };
-
-    authStore.setTokens(tokenData);
-    saveTokensToCookies(tokenData);
-
-    await getCurrentUser();
-    return data.token;
+    const data = await handleResponse<AuthResponse | MfaChallenge>(response);
+    if (isMfaChallenge(data)) {
+      authStore.setLoading(false);
+      return { status: 'mfa_required', challenge: data };
+    }
+    return { status: 'authenticated', token: await storeSession(data) };
   } catch (error) {
     const message = error instanceof AuthError ? error.message : 'Login failed. Please try again.';
     authStore.setError(message);
@@ -77,12 +104,49 @@ export async function login(credentials: LoginRequest): Promise<string> {
   }
 }
 
+/**
+ * Second login step: exchanges the challenge from {@link login} plus a code from
+ * the authenticator app for a session. On a wrong code the thrown AuthError
+ * carries `retryMfaToken`, a fresh challenge for the next attempt.
+ */
+export async function completeTotpLogin(mfaToken: string, code: string): Promise<string> {
+  authStore.setLoading(true);
+  authStore.clearError();
+
+  try {
+    const response = await fetch(ENDPOINTS.LOGIN_TOTP, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mfaToken, code })
+    });
+    return await storeSession(await handleResponse<AuthResponse>(response));
+  } catch (error) {
+    const message =
+      error instanceof AuthError ? error.message : 'Verification failed. Please try again.';
+    authStore.setError(message);
+    throw error;
+  }
+}
+
 export function oidcLogin(credentials: LoginRequest): void {
+  submitForm(ENDPOINTS.OIDC_LOGIN, { ...credentials });
+}
+
+/**
+ * Second step of the OIDC browser login. The backend session already holds the
+ * password step; on success it resumes the authorization request, on failure it
+ * redirects back to /login/mfa with `error=true`.
+ */
+export function oidcTotpLogin(code: string): void {
+  submitForm(ENDPOINTS.OIDC_LOGIN_TOTP, { code });
+}
+
+function submitForm(action: string, fields: Record<string, string>): void {
   const form = document.createElement('form');
   form.method = 'POST';
-  form.action = ENDPOINTS.OIDC_LOGIN;
+  form.action = action;
 
-  for (const [name, value] of Object.entries(credentials)) {
+  for (const [name, value] of Object.entries(fields)) {
     const field = document.createElement('input');
     field.type = 'hidden';
     field.name = name;
